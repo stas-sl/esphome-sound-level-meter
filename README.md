@@ -1,6 +1,6 @@
 # ESPHome Sound Level Meter
 
-This component is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm))
+This component was made to measure environmental noise levels (Leq, Lmin, Lmax, Lpeak) with different frequency weightings over configured time intervals. It is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)).
 
 <img width="497" alt="image" src="https://user-images.githubusercontent.com/4602302/220765417-b72447e6-fa94-4d92-84e9-0502fa6743c1.png">
 
@@ -188,7 +188,7 @@ sound_level_meter:
 
 ### Filter design (math)
 
-Check out [filter-design notebook](math/filter-design.ipynb) to learn how those SOS coeffients were calculated.
+Check out [filter-design notebook](math/filter-design.ipynb) to learn how those SOS coefficients were calculated.
 
 ### Performance
 
