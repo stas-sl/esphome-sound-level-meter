@@ -11,7 +11,7 @@ external_components:
   - source: github://stas-sl/esphome-sound-level-meter
 ```
 
-For configuration options see [minimal-example-config.yaml](minimal-example-config.yaml) or (advanced-example-config.yaml](advanced-example-config.yaml):
+For configuration options see [minimal-example-config.yaml](minimal-example-config.yaml) or [advanced-example-config.yaml](advanced-example-config.yaml):
 
 ```yaml
 i2s:
