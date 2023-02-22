@@ -18,50 +18,177 @@ i2s:
   bck_pin: 23
   ws_pin: 18
   din_pin: 19
-  sample_rate: 48000
-  bits_per_sample: 32
-  dma_buf_count: 8
-  dma_buf_len: 256
-  use_apll: true
-  bits_shift: 8
+  sample_rate: 48000            # default: 48000
+  bits_per_sample: 32           # default: 32
+  dma_buf_count: 8              # default: 8
+  dma_buf_len: 256              # default: 256
+  use_apll: true                # default: false
+
+  # right shift samples. 
+  # for example if mic has 24 bit resolution, and
+  # i2s configured as 32 bits, then audio data will be aligned left (MSB)
+  # and LSB will be padded with zeros, so you might want to shift them right by 8 bits
+  bits_shift: 8                 # default: 0
 
 sound_level_meter:
-  update_interval: 1s
-  buffer_size: 1000
-  warmup_interval: 500ms
-  task_stack_size: 4096
-  task_priority: 2
-  task_core: 1
-  mic_sensitivity: -26dB
-  mic_sensitivity_ref: 94dB
-  offset: 0dB
+  # update_interval specifies over which interval to aggregate audio data
+  # you can specify default update_interval on top level, but you can also override
+  # it further by specifying it on sensor level
+  update_interval: 1s           # default: 60s
+
+  # buffer_size is in samples (not bytes), so for float data type
+  # number of bytes will be buffer_size * 4
+  buffer_size: 1024             # default: 1024
+
+  # ignore audio data at startup for this long
+  warmup_interval: 500ms        # default: 500ms
+
+  # audio processing runs in a separate task, you can change its settings below
+  task_stack_size: 4096         # default: 4096
+  task_priority: 2              # default: 2
+  task_core: 1                  # default: 1
+
+  # see your mic datasheet to find sensitivity and reference SPL.
+  # those are used to convert dB FS to db SPL
+  mic_sensitivity: -26dB        # default: empty 
+  mic_sensitivity_ref: 94dB     # default: empty 
+  # additional offset if needed 
+  offset: 0dB                   # default: empty
+
+  # for flexibility sensors are organized hierarchically into groups. each group
+  # could have any number of filters, sensors and nested groups. 
+  # for examples if there is a top level group A with filter A and nested group B
+  # with filter B, then for sensors inside group B filters A and then B will be 
+  # applied:
+  # groups:
+  #   # group A
+  #   - filters:
+  #       - filter A
+  #     groups:
+  #       # group B
+  #       - filters:
+  #           - filter B
+  #         sensors:
+  #           - sensor X
   groups:
+    # group 1 (mic eq)
     - filters:
-        - type: sos
-          coeffs:
-            #      b0            b1             b2           a1             a2
-            # INMP441:
-            - [ 1.0019784  , -1.9908513  ,  0.9889158  , -1.9951786  ,  0.99518436 ]
-            # A-weighting:
-            - [ 0.16999495 ,  0.741029   ,  0.52548885 , -0.11321865 , -0.056549273]
-            - [ 1.         , -2.00027    ,  1.0002706  , -0.03433284 , -0.79215795 ]
-            - [ 1.         , -0.709303   , -0.29071867 , -1.9822421  ,  0.9822986  ]
-      sensors:
-        - type: eq
-          name: LAeq_1s
-        - type: eq
-          name: LAeq_1min
-          update_interval: 1min # override defaults from component
-          id: LAeq
-        - type: max
-          name: LAmax_1s_125ms
-          window_size: 125ms
-        - type: min
-          name: LAmin_1s_125ms
-          window_size: 125ms
-        - type: peak
-          name: LApeak_1s
+      # for now only SOS filter type is supported, see math/filter-design.ipynb 
+      # to learn how to create or convert other filter types to SOS
+      - type: sos
+        coeffs:
+          # INMP441:
+          #      b0            b1           b2          a1            a2
+          - [ 1.0019784 , -1.9908513  , 0.9889158 , -1.9951786  , 0.99518436]
+
+      # nested groups
+      groups:
+        # group 1.1 (no weighting)
+        - sensors:
+            # 'eq' type sensor calculates Leq (average) sound level over specified period
+            - type: eq
+              name: LZeq_1s
+              id: LZeq_1s
+              # you can override updated_interval specified on top level
+              # individually per each sensor
+              update_interval: 1s
+
+            # you can have as many sensors of same type, but with different
+            # other parameters (e.g. update_interval) as needed
+            - type: eq
+              name: LZeq_1min
+              id: LZeq_1min
+              unit_of_measurement: dBZ
+
+            # 'max' sensor type calculates Lmax with specified window_size.
+            # for example, if update_interval is 60s and window_size is 1s
+            # then it will calculate 60 Leq values for each second of audio data
+            # and the result will be max of them
+            - type: max
+              name: LZmax_1s_1min
+              id: LZmax_1s_1min
+              window_size: 1s
+              unit_of_measurement: dBZ
+
+            # same as 'max', but 'min'
+            - type: min
+              name: LZmin_1s_1min
+              id: LZmin_1s_1min
+              window_size: 1s
+              unit_of_measurement: dBZ
+
+            # it finds max single sample over whole update_interval
+            - type: peak
+              name: LZpeak_1min
+              id: LZpeak_1min
+              unit_of_measurement: dBZ
+
+        # group 1.2 (A-weighting)
+        - filters:
+            # for now only SOS filter type is supported, see math/filter-design.ipynb 
+            # to learn how to create or convert other filter types to SOS
+            - type: sos
+              coeffs:
+                # A-weighting:
+                #       b0           b1            b2             a1            a2
+                - [ 0.16999495 ,  0.741029   ,  0.52548885 , -0.11321865 , -0.056549273]
+                - [ 1.         , -2.00027    ,  1.0002706  , -0.03433284 , -0.79215795 ]
+                - [ 1.         , -0.709303   , -0.29071867 , -1.9822421  ,  0.9822986  ]
+          sensors:
+          - type: eq
+            name: LAeq_1min
+            id: LAeq_1min
+            unit_of_measurement: dBA
+          - type: max
+            name: LAmax_1s_1min
+            id: LAmax_1s_1min
+            window_size: 1s
+            unit_of_measurement: dBA
+          - type: min
+            name: LAmin_1s_1min
+            id: LAmin_1s_1min
+            window_size: 1s
+            unit_of_measurement: dBA
+          - type: peak
+            name: LApeak_1min
+            id: LApeak_1min
+            unit_of_measurement: dBA
+         
+        # group 1.3 (C-weighting)
+        - filters:
+            # for now only SOS filter type is supported, see math/filter-design.ipynb 
+            # to learn how to create or convert other filter types to SOS
+            - type: sos
+              coeffs:
+                # C-weighting:
+                #       b0             b1             b2             a1             a2
+                - [-0.49651518  , -0.12296628  , -0.0076134163, -0.37165618   , 0.03453208  ]
+                - [ 1.          ,  1.3294908   ,  0.44188643  ,  1.2312505    , 0.37899444  ]
+                - [ 1.          , -2.          ,  1.          , -1.9946145    , 0.9946217   ]
+          sensors:
+          - type: eq
+            name: LCeq_1min
+            id: LCeq_1min
+            unit_of_measurement: dBC
+          - type: max
+            name: LCmax_1s_1min
+            id: LCmax_1s_1min
+            window_size: 1s
+            unit_of_measurement: dBC
+          - type: min
+            name: LCmin_1s_1min
+            id: LCmin_1s_1min
+            window_size: 1s
+            unit_of_measurement: dBC
+          - type: peak
+            name: LCpeak_1min
+            id: LCpeak_1min
+            unit_of_measurement: dBC
 ```
+
+### Filter design (math)
+
+Check out [filter-design notebook](math/filter-design.ipynb) to learn how those SOS coeffients were calculated.
 
 ### Performance
 
