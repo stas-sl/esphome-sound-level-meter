@@ -1,0 +1,61 @@
+esphome:
+  name: sound-level-meter
+
+external_components:
+  - source: github://stas-sl/esphome-sound-level-meter
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG
+
+i2s:
+  bck_pin: 23
+  ws_pin: 18
+  din_pin: 19
+  sample_rate: 48000
+  bits_per_sample: 32
+  dma_buf_count: 8
+  dma_buf_len: 256
+  use_apll: true
+  bits_shift: 8
+
+sound_level_meter:
+  update_interval: 1s
+  buffer_size: 1000
+  warmup_interval: 500ms
+  task_stack_size: 4096
+  task_priority: 2
+  task_core: 1
+  mic_sensitivity: -26dB
+  mic_sensitivity_ref: 94dB
+  offset: 0dB
+  groups:
+    - filters:
+        - type: sos
+          coeffs:
+            #      b0            b1             b2           a1             a2
+            # INMP441:
+            - [ 1.0019784  , -1.9908513  ,  0.9889158  , -1.9951786  ,  0.99518436 ]
+            # A-weighting:
+            - [ 0.16999495 ,  0.741029   ,  0.52548885 , -0.11321865 , -0.056549273]
+            - [ 1.         , -2.00027    ,  1.0002706  , -0.03433284 , -0.79215795 ]
+            - [ 1.         , -0.709303   , -0.29071867 , -1.9822421  ,  0.9822986  ]
+      sensors:
+      - type: eq
+        name: LAeq_1s
+      - type: eq
+        name: LAeq_1min
+        update_interval: 1min # override defaults from component
+        id: LAeq
+      - type: max
+        name: LAmax_1s_125ms
+        window_size: 125ms
+      - type: min
+        name: LAmin_1s_125ms
+        window_size: 125ms
+      - type: peak
+        name: LApeak_1s
