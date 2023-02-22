@@ -2,6 +2,8 @@
 
 This component is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm))
 
+<img width="497" alt="image" src="https://user-images.githubusercontent.com/4602302/220765417-b72447e6-fa94-4d92-84e9-0502fa6743c1.png">
+
 Add it to your ESPHome config:
 
 ```yaml
@@ -9,7 +11,7 @@ external_components:
   - source: github://stas-sl/esphome-sound-level-meter
 ```
 
-For configuration options see [example-config.yaml](example-config.yaml):
+For configuration options see [minimal-example-config.yaml](minimal-example-config.yaml) or advanced-example-config.yaml](advanced-example-config.yaml):
 
 ```yaml
 i2s:
