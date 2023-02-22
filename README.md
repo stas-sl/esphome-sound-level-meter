@@ -34,7 +34,7 @@ sound_level_meter:
   # update_interval specifies over which interval to aggregate audio data
   # you can specify default update_interval on top level, but you can also override
   # it further by specifying it on sensor level
-  update_interval: 1s           # default: 60s
+  update_interval: 60s           # default: 60s
 
   # buffer_size is in samples (not bytes), so for float data type
   # number of bytes will be buffer_size * 4
