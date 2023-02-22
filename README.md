@@ -79,6 +79,12 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 | 240MHz   | 6     | 1 Leq                          | 48000       | 1024        | 67 ms               |
 | 240MHz   | 6     | 1 Leq, 1 Lpeak, 1 Lmax, 1 Lmin | 48000       | 1024        | 90 ms               |
 
+### Supported platforms
+
+Tested with ESPHome version 2023.2.0, platforms:
+[x] ESP32 (Arduino v2.0.5, ESP-IDF v4.4.2)
+[x] ESP32-IDF (ESP-IDF v4.4.2)
+
 ### References
 
 1. [ESP32-I2S-SLM hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)
