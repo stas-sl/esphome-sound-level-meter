@@ -4,6 +4,9 @@ This component was made to measure environmental noise levels (Leq, Lmin, Lmax, 
 
 <img width="497" alt="image" src="https://user-images.githubusercontent.com/4602302/220765417-b72447e6-fa94-4d92-84e9-0502fa6743c1.png">
 
+Typical weekly traffic noise recorded with a microphone located 50m from a medium traffic road:
+<img width="1187" alt="image" src="https://user-images.githubusercontent.com/4602302/224789124-a86224c9-c11d-4972-a564-b042bab97bcb.png">
+
 Add it to your ESPHome config:
 
 ```yaml
