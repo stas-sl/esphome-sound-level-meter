@@ -53,6 +53,7 @@ sound_level_meter:
 
   # see your mic datasheet to find sensitivity and reference SPL.
   # those are used to convert dB FS to db SPL
+  # if omitted, dbFS will be reported
   mic_sensitivity: -26dB        # default: empty 
   mic_sensitivity_ref: 94dB     # default: empty 
   # additional offset if needed 
