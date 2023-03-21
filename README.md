@@ -218,6 +218,10 @@ Tested with ESPHome version 2023.2.0, platforms:
 - [x] ESP32 (Arduino v2.0.5, ESP-IDF v4.4.2)
 - [x] ESP32-IDF (ESP-IDF v4.4.2)
 
+### Sending data to sensor.community
+
+See [sensor-community-example-config.yaml](sensor-community-example-config.yaml)
+
 ### References
 
 1. [ESP32-I2S-SLM hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)

@@ -1,0 +1,117 @@
+esphome:
+  name: sound-level-meter-sensor-comminity
+  includes:
+    # should contain single line: #include <esp_task_wdt.h>
+    - wdt_include.h  
+
+  on_boot:
+    then:
+      - lambda: !lambda |-
+        // increase watchdog timeout to 30 seconds
+        // so that ESP32 don't crash on long http requests
+        // which might happen with sensor.community quite often
+        esp_task_wdt_init(30, false); 
+
+external_components:
+  - source: github://stas-sl/esphome-sound-level-meter
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG
+
+api:
+  password: !secret api_password
+  reboot_timeout: 0s
+
+ota:
+  password: !secret ota_password
+
+http_request:
+  # default is 5 seconds, but you might consider increasing it,
+  # if data will be missing in sensor.community
+  timeout: 5s  
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  reboot_timeout: 0s
+  fast_connect: true
+
+web_server:
+  port: 80
+
+i2s:
+  ws_pin: 18
+  bck_pin: 23
+  din_pin: 19
+  sample_rate: 48000
+  bits_per_sample: 32
+  dma_buf_count: 8
+  dma_buf_len: 256
+  use_apll: true
+  bits_shift: 8
+
+sound_level_meter:
+  update_interval: 150s  # to match original sensor.community firmware settings
+  warmup_interval: 500ms
+  mic_sensitivity: -26dB
+  mic_sensitivity_ref: 94dB
+  groups:
+    - filters:
+        - type: sos
+          coeffs:
+            # A-weighting:
+            #       b0           b1            b2             a1            a2
+            - [0.16999495, 0.741029, 0.52548885, -0.11321865, -0.056549273]
+            - [1., -2.00027, 1.0002706, -0.03433284, -0.79215795]
+            - [1., -0.709303, -0.29071867, -1.9822421, 0.9822986]
+      sensors:
+        - type: eq
+          name: LAeq_1min
+          id: LAeq_1min
+          unit_of_measurement: dBA
+        - type: max
+          name: LAmax_125ms_1min
+          id: LAmax_125ms_1min
+          window_size: 125ms   # I believe, previously 35ms was used in DNMS FW, 
+                               # but later it was changed to 125ms
+          unit_of_measurement: dBA
+        - type: min
+          name: LAmin_125ms_1min
+          id: LAmin_125ms_1min
+          window_size: 125ms
+          unit_of_measurement: dBA
+
+interval:
+  - interval: 150s
+    then:
+      - if:
+          condition:
+            lambda: 'return id(LAeq_1min).has_state();'
+          then:
+            - http_request.post:
+                verify_ssl: false
+                url: http://api.sensor.community/v1/push-sensor-data/
+                headers:
+                  X-Pin: 15
+                  X-Sensor: esp32-C049EFEFF8E02
+                  Content-Type: application/json
+                json: |-
+                    root["software_version"] = "ESPHome " ESPHOME_VERSION;
+                    auto values = root.createNestedArray("sensordatavalues");
+
+                    auto LA_eq = values.createNestedObject();
+                    LA_eq["value_type"] = "noise_LAeq";
+                    LA_eq["value"] = id(LAeq_1min).state;
+
+                    auto LA_min = values.createNestedObject();
+                    LA_min["value_type"] = "noise_LA_min";
+                    LA_min["value"] = id(LAmin_125ms_1min).state;
+
+                    auto LA_max = values.createNestedObject();
+                    LA_max["value_type"] = "noise_LA_max";
+                    LA_max["value"] = id(LAmax_125ms_1min).state;
