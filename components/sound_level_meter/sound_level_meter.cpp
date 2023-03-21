@@ -85,8 +85,8 @@ void SoundLevelMeter::task(void *param) {
       process_count += buffer.size();
 
       auto sr = this_->get_sample_rate();
-      if (process_count >= sr * this_->update_interval_ / 1000) {
-        auto t = uint32_t(float(process_time) / process_count * sr / 1000);
+      if (process_count >= sr * (this_->update_interval_ / 1000.f)) {
+        auto t = uint32_t(float(process_time) / process_count * (sr / 1000.f));
         ESP_LOGD(TAG, "Processing time per 1s of audio data (%u samples): %u ms", sr, t);
         process_time = process_count = 0;
       }
@@ -137,11 +137,11 @@ void SensorGroup::process(std::vector<float> &buffer) {
 
 void SoundLevelMeterSensor::set_parent(SoundLevelMeter *parent) {
   this->parent_ = parent;
-  this->update_samples_ = parent->get_sample_rate() * parent->get_update_interval() / 1000;
+  this->update_samples_ = parent->get_sample_rate() * (parent->get_update_interval() / 1000.f);
 }
 
 void SoundLevelMeterSensor::set_update_interval(uint32_t update_interval) {
-  this->update_samples_ = this->parent_->get_sample_rate() * update_interval / 1000;
+  this->update_samples_ = this->parent_->get_sample_rate() * (update_interval / 1000.f);
 }
 
 void SoundLevelMeterSensor::defer_publish_state(float state) {
@@ -192,7 +192,7 @@ void SoundLevelMeterSensorEq::process(std::vector<float> &buffer) {
 /* SoundLevelMeterSensorMax */
 
 void SoundLevelMeterSensorMax::set_window_size(uint32_t window_size) {
-  this->window_samples_ = this->parent_->get_sample_rate() * window_size / 1000;
+  this->window_samples_ = this->parent_->get_sample_rate() * (window_size / 1000.f);
 }
 
 void SoundLevelMeterSensorMax::process(std::vector<float> &buffer) {
@@ -218,7 +218,7 @@ void SoundLevelMeterSensorMax::process(std::vector<float> &buffer) {
 /* SoundLevelMeterSensorMin */
 
 void SoundLevelMeterSensorMin::set_window_size(uint32_t window_size) {
-  this->window_samples_ = this->parent_->get_sample_rate() * window_size / 1000;
+  this->window_samples_ = this->parent_->get_sample_rate() * (window_size / 1000.f);
 }
 
 void SoundLevelMeterSensorMin::process(std::vector<float> &buffer) {
