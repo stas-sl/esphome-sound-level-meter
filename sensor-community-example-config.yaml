@@ -98,7 +98,7 @@ interval:
                 url: http://api.sensor.community/v1/push-sensor-data/
                 headers:
                   X-Pin: 15
-                  X-Sensor: esp32-C049EFEFF8E02
+                  X-Sensor: esp32-... # replace with your sensor ID
                   Content-Type: application/json
                 json: |-
                     root["software_version"] = "ESPHome " ESPHOME_VERSION;
