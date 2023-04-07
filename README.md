@@ -34,10 +34,16 @@ i2s:
   bits_shift: 8                 # default: 0
 
 sound_level_meter:
+  id: sound_level_meter1
+
   # update_interval specifies over which interval to aggregate audio data
   # you can specify default update_interval on top level, but you can also override
   # it further by specifying it on sensor level
   update_interval: 60s           # default: 60s
+
+  # you can disable (turn off) component by default (on boot)
+  # and turn it on later when needed via sound_level_meter.turn_on/toggle actions
+  is_on: true                    # default: true
 
   # buffer_size is in samples (not bytes), so for float data type
   # number of bytes will be buffer_size * 4
@@ -188,6 +194,29 @@ sound_level_meter:
             name: LCpeak_1min
             id: LCpeak_1min
             unit_of_measurement: dBC
+
+# automation
+# available actions: 
+#   - sound_level_meter.turn_on
+#   - sound_level_meter.turn_off
+#   - sound_level_meter.toggle
+switch:
+  - platform: template
+    name: "Sound Level Meter Switch"
+    lambda: |-
+      return id(sound_level_meter1).is_on();
+    turn_on_action:
+      then: sound_level_meter.turn_on
+    turn_off_action:
+      then: sound_level_meter.turn_off
+
+binary_sensor:
+  - platform: gpio
+    pin: GPIO0
+    name: "Sound Level Meter Toggle Button"
+    on_press:
+      then: 
+        sound_level_meter.toggle: sound_level_meter1
 ```
 
 ### Filter design (math)

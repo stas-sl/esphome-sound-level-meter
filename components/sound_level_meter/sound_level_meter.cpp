@@ -57,13 +57,38 @@ void SoundLevelMeter::setup() {
 }
 
 void SoundLevelMeter::loop() {
-  std::lock_guard<std::mutex> lock(this->defer_mutex_);
+  std::lock_guard lock(this->defer_mutex_);
   while (!this->defer_queue_.empty()) {
     auto &f = this->defer_queue_.front();
     f();
     this->defer_queue_.pop();
   }
 }
+
+void SoundLevelMeter::turn_on() {
+  std::lock_guard lock(this->on_mutex_);
+  this->reset();
+  this->is_on_ = true;
+  this->on_cv_.notify_one();
+  ESP_LOGD(TAG, "Turned on");
+}
+
+void SoundLevelMeter::turn_off() {
+  std::lock_guard lock(this->on_mutex_);
+  this->reset();
+  this->is_on_ = false;
+  this->on_cv_.notify_one();
+  ESP_LOGD(TAG, "Turned off");
+}
+
+void SoundLevelMeter::toggle() {
+  if (this->is_on_)
+    this->turn_off();
+  else
+    this->turn_on();
+}
+
+bool SoundLevelMeter::is_on() { return this->is_on_; }
 
 void SoundLevelMeter::task(void *param) {
   SoundLevelMeter *this_ = reinterpret_cast<SoundLevelMeter *>(param);
@@ -76,8 +101,13 @@ void SoundLevelMeter::task(void *param) {
   uint32_t process_time = 0, process_count = 0;
   uint64_t process_start;
   while (1) {
+    {
+      std::unique_lock lock(this_->on_mutex_);
+      this_->on_cv_.wait(lock, [this_] { return this_->is_on_; });
+    }
     if (this_->i2s_->read_samples(buffer)) {
       process_start = esp_timer_get_time();
+      
       for (auto *g : this_->groups_)
         g->process(buffer);
 
@@ -95,8 +125,13 @@ void SoundLevelMeter::task(void *param) {
 }
 
 void SoundLevelMeter::defer(std::function<void()> &&f) {
-  std::lock_guard<std::mutex> lock(this->defer_mutex_);
+  std::lock_guard lock(this->defer_mutex_);
   this->defer_queue_.push(std::move(f));
+}
+
+void SoundLevelMeter::reset() {
+  for (auto *g : this->groups_)
+    g->reset();
 }
 
 /* SensorGroup */
@@ -131,6 +166,15 @@ void SensorGroup::process(std::vector<float> &buffer) {
 
   for (auto g : this->groups_)
     g->process(data);
+}
+
+void SensorGroup::reset() {
+  for (auto f : this->filters_)
+    f->reset();
+  for (auto s : this->sensors_)
+    s->reset();
+  for (auto g : this->groups_)
+    g->reset();
 }
 
 /* SoundLevelMeterSensor */
@@ -189,6 +233,12 @@ void SoundLevelMeterSensorEq::process(std::vector<float> &buffer) {
   this->sum_ += local_sum;
 }
 
+void SoundLevelMeterSensorEq::reset() {
+  this->sum_ = 0.;
+  this->count_ = 0;
+  this->defer_publish_state(NAN);
+}
+
 /* SoundLevelMeterSensorMax */
 
 void SoundLevelMeterSensorMax::set_window_size(uint32_t window_size) {
@@ -213,6 +263,14 @@ void SoundLevelMeterSensorMax::process(std::vector<float> &buffer) {
       this->count_max_ = 0;
     }
   }
+}
+
+void SoundLevelMeterSensorMax::reset() {
+  this->sum_ = 0.f;
+  this->max_ = std::numeric_limits<float>::min();
+  this->count_max_ = 0;
+  this->count_sum_ = 0;
+  this->defer_publish_state(NAN);
 }
 
 /* SoundLevelMeterSensorMin */
@@ -241,6 +299,14 @@ void SoundLevelMeterSensorMin::process(std::vector<float> &buffer) {
   }
 }
 
+void SoundLevelMeterSensorMin::reset() {
+  this->sum_ = 0.f;
+  this->min_ = std::numeric_limits<float>::max();
+  this->count_min_ = 0;
+  this->count_sum_ = 0;
+  this->defer_publish_state(NAN);
+}
+
 /* SoundLevelMeterSensorPeak */
 
 void SoundLevelMeterSensorPeak::process(std::vector<float> &buffer) {
@@ -255,6 +321,12 @@ void SoundLevelMeterSensorPeak::process(std::vector<float> &buffer) {
       this->count_ = 0;
     }
   }
+}
+
+void SoundLevelMeterSensorPeak::reset() {
+  this->peak_ = 0.f;
+  this->count_ = 0;
+  this->defer_publish_state(NAN);
 }
 
 /* SOS_Filter */
@@ -283,6 +355,11 @@ void SOS_Filter::process(std::vector<float> &data) {
       data[i] = yi;
     }
   }
+}
+
+void SOS_Filter::reset() {
+  for (auto &s : this->state_)
+    s = {0.f, 0.f};
 }
 }  // namespace sound_level_meter
 }  // namespace esphome

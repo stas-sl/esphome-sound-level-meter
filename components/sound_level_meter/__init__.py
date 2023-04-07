@@ -1,5 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome import automation
+from esphome.automation import maybe_simple_id
 from esphome.components import sensor, i2s
 from esphome.const import (
     CONF_ID,
@@ -29,6 +31,9 @@ SoundLevelMeterSensorPeak = sound_level_meter_ns.class_(
 SensorGroup = sound_level_meter_ns.class_("SensorGroup")
 Filter = sound_level_meter_ns.class_("Filter")
 SOS_Filter = sound_level_meter_ns.class_("SOS_Filter", Filter)
+ToggleAction = sound_level_meter_ns.class_("ToggleAction", automation.Action)
+TurnOffAction = sound_level_meter_ns.class_("TurnOffAction", automation.Action)
+TurnOnAction = sound_level_meter_ns.class_("TurnOnAction", automation.Action)
 
 
 CONF_I2S_ID = "i2s_id"
@@ -47,6 +52,7 @@ CONF_TASK_CORE = "task_core"
 CONF_MIC_SENSITIVITY = "mic_sensitivity"
 CONF_MIC_SENSITIVITY_REF = "mic_sensitivity_ref"
 CONF_OFFSET = "offset"
+CONF_IS_ON = "is_on"
 
 
 CONFIG_SENSOR_SCHEMA = cv.typed_schema(
@@ -117,6 +123,7 @@ CONFIG_SCHEMA = (
             cv.GenerateID(): cv.declare_id(SoundLevelMeter),
             cv.GenerateID(CONF_I2S_ID): cv.use_id(i2s.I2SComponent),
             cv.Optional(CONF_UPDATE_INTERVAL, default="60s"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_IS_ON, default=True): cv.boolean,
             cv.Optional(CONF_BUFFER_SIZE, default=1024): cv.positive_not_null_int,
             cv.Optional(CONF_WARMUP_INTERVAL, default="500ms"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_TASK_STACK_SIZE, default=4096): cv.positive_not_null_int,
@@ -130,6 +137,10 @@ CONFIG_SCHEMA = (
     )
     .extend(cv.COMPONENT_SCHEMA)
 )
+
+SOUND_LEVEL_METER_ACTION_SCHEMA = maybe_simple_id({
+    cv.GenerateID(): cv.use_id(SoundLevelMeter)
+})
 
 
 async def groups_to_code(config, component, parent):
@@ -174,4 +185,14 @@ async def to_code(config):
         cg.add(var.set_mic_sensitivity_ref(config[CONF_MIC_SENSITIVITY_REF]))
     if CONF_OFFSET in config:
         cg.add(var.set_offset(config[CONF_OFFSET]))
+    if not config[CONF_IS_ON]:
+        cg.add(var.turn_off())
     await groups_to_code(config[CONF_GROUPS], var, var)
+
+
+@automation.register_action("sound_level_meter.toggle", ToggleAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
+@automation.register_action("sound_level_meter.turn_off", TurnOffAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
+@automation.register_action("sound_level_meter.turn_on", TurnOnAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
+async def switch_toggle_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, paren)
