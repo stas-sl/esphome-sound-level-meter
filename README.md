@@ -11,7 +11,7 @@ Add it to your ESPHome config:
 
 ```yaml
 external_components:
-  - source: github://stas-sl/esphome-sound-level-meter
+  - source: github://stas-sl/esphome-sound-level-meter  # add @tag if you want to use a specific version (e.g @v1.0.0)
 ```
 
 For configuration options see [minimal-example-config.yaml](minimal-example-config.yaml) or [advanced-example-config.yaml](advanced-example-config.yaml):
