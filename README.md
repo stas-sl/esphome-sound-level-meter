@@ -1,4 +1,4 @@
-# ESPHome Sound Level Meter
+# ESPHome Sound Level Meter [![CI](https://github.com/stas-sl/esphome-sound-level-meter/actions/workflows/ci.yaml/badge.svg)](https://github.com/stas-sl/esphome-sound-level-meter/actions/workflows/ci.yaml)
 
 This component was made to measure environmental noise levels (Leq, Lmin, Lmax, Lpeak) with different frequency weightings over configured time intervals. It is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)).
 
@@ -14,7 +14,7 @@ external_components:
   - source: github://stas-sl/esphome-sound-level-meter  # add @tag if you want to use a specific version (e.g @v1.0.0)
 ```
 
-For configuration options see [minimal-example-config.yaml](minimal-example-config.yaml) or [advanced-example-config.yaml](advanced-example-config.yaml):
+For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml):
 
 ```yaml
 i2s:
@@ -27,7 +27,7 @@ i2s:
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false
 
-  # right shift samples. 
+  # right shift samples.
   # for example if mic has 24 bit resolution, and
   # i2s configured as 32 bits, then audio data will be aligned left (MSB)
   # and LSB will be padded with zeros, so you might want to shift them right by 8 bits
@@ -59,16 +59,15 @@ sound_level_meter:
 
   # see your mic datasheet to find sensitivity and reference SPL.
   # those are used to convert dB FS to db SPL
-  # if omitted, dbFS will be reported
-  mic_sensitivity: -26dB        # default: empty 
-  mic_sensitivity_ref: 94dB     # default: empty 
-  # additional offset if needed 
+  mic_sensitivity: -26dB        # default: empty
+  mic_sensitivity_ref: 94dB     # default: empty
+  # additional offset if needed
   offset: 0dB                   # default: empty
 
   # for flexibility sensors are organized hierarchically into groups. each group
-  # could have any number of filters, sensors and nested groups. 
+  # could have any number of filters, sensors and nested groups.
   # for examples if there is a top level group A with filter A and nested group B
-  # with filter B, then for sensors inside group B filters A and then B will be 
+  # with filter B, then for sensors inside group B filters A and then B will be
   # applied:
   # groups:
   #   # group A
@@ -83,13 +82,13 @@ sound_level_meter:
   groups:
     # group 1 (mic eq)
     - filters:
-      # for now only SOS filter type is supported, see math/filter-design.ipynb 
-      # to learn how to create or convert other filter types to SOS
-      - type: sos
-        coeffs:
-          # INMP441:
-          #      b0            b1           b2          a1            a2
-          - [ 1.0019784 , -1.9908513  , 0.9889158 , -1.9951786  , 0.99518436]
+        # for now only SOS filter type is supported, see math/filter-design.ipynb
+        # to learn how to create or convert other filter types to SOS
+        - type: sos
+          coeffs:
+            # INMP441:
+            #      b0            b1           b2          a1            a2
+            - [ 1.0019784 , -1.9908513  , 0.9889158 , -1.9951786  , 0.99518436]
 
       # nested groups
       groups:
@@ -135,7 +134,7 @@ sound_level_meter:
 
         # group 1.2 (A-weighting)
         - filters:
-            # for now only SOS filter type is supported, see math/filter-design.ipynb 
+            # for now only SOS filter type is supported, see math/filter-design.ipynb
             # to learn how to create or convert other filter types to SOS
             - type: sos
               coeffs:
@@ -145,28 +144,28 @@ sound_level_meter:
                 - [ 1.         , -2.00027    ,  1.0002706  , -0.03433284 , -0.79215795 ]
                 - [ 1.         , -0.709303   , -0.29071867 , -1.9822421  ,  0.9822986  ]
           sensors:
-          - type: eq
-            name: LAeq_1min
-            id: LAeq_1min
-            unit_of_measurement: dBA
-          - type: max
-            name: LAmax_1s_1min
-            id: LAmax_1s_1min
-            window_size: 1s
-            unit_of_measurement: dBA
-          - type: min
-            name: LAmin_1s_1min
-            id: LAmin_1s_1min
-            window_size: 1s
-            unit_of_measurement: dBA
-          - type: peak
-            name: LApeak_1min
-            id: LApeak_1min
-            unit_of_measurement: dBA
-         
+            - type: eq
+              name: LAeq_1min
+              id: LAeq_1min
+              unit_of_measurement: dBA
+            - type: max
+              name: LAmax_1s_1min
+              id: LAmax_1s_1min
+              window_size: 1s
+              unit_of_measurement: dBA
+            - type: min
+              name: LAmin_1s_1min
+              id: LAmin_1s_1min
+              window_size: 1s
+              unit_of_measurement: dBA
+            - type: peak
+              name: LApeak_1min
+              id: LApeak_1min
+              unit_of_measurement: dBA
+
         # group 1.3 (C-weighting)
         - filters:
-            # for now only SOS filter type is supported, see math/filter-design.ipynb 
+            # for now only SOS filter type is supported, see math/filter-design.ipynb
             # to learn how to create or convert other filter types to SOS
             - type: sos
               coeffs:
@@ -176,27 +175,28 @@ sound_level_meter:
                 - [ 1.          ,  1.3294908   ,  0.44188643  ,  1.2312505    , 0.37899444  ]
                 - [ 1.          , -2.          ,  1.          , -1.9946145    , 0.9946217   ]
           sensors:
-          - type: eq
-            name: LCeq_1min
-            id: LCeq_1min
-            unit_of_measurement: dBC
-          - type: max
-            name: LCmax_1s_1min
-            id: LCmax_1s_1min
-            window_size: 1s
-            unit_of_measurement: dBC
-          - type: min
-            name: LCmin_1s_1min
-            id: LCmin_1s_1min
-            window_size: 1s
-            unit_of_measurement: dBC
-          - type: peak
-            name: LCpeak_1min
-            id: LCpeak_1min
-            unit_of_measurement: dBC
+            - type: eq
+              name: LCeq_1min
+              id: LCeq_1min
+              unit_of_measurement: dBC
+            - type: max
+              name: LCmax_1s_1min
+              id: LCmax_1s_1min
+              window_size: 1s
+              unit_of_measurement: dBC
+            - type: min
+              name: LCmin_1s_1min
+              id: LCmin_1s_1min
+              window_size: 1s
+              unit_of_measurement: dBC
+            - type: peak
+              name: LCpeak_1min
+              id: LCpeak_1min
+              unit_of_measurement: dBC
+
 
 # automation
-# available actions: 
+# available actions:
 #   - sound_level_meter.turn_on
 #   - sound_level_meter.turn_off
 #   - sound_level_meter.toggle
@@ -215,7 +215,7 @@ binary_sensor:
     pin: GPIO0
     name: "Sound Level Meter Toggle Button"
     on_press:
-      then: 
+      then:
         sound_level_meter.toggle: sound_level_meter1
 ```
 
@@ -249,7 +249,7 @@ Tested with ESPHome version 2023.2.0, platforms:
 
 ### Sending data to sensor.community
 
-See [sensor-community-example-config.yaml](sensor-community-example-config.yaml)
+See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
 
 ### References
 

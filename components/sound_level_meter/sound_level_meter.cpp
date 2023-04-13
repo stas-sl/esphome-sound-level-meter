@@ -107,7 +107,7 @@ void SoundLevelMeter::task(void *param) {
     }
     if (this_->i2s_->read_samples(buffer)) {
       process_start = esp_timer_get_time();
-      
+
       for (auto *g : this_->groups_)
         g->process(buffer);
 

@@ -1,5 +1,7 @@
 # source: https://github.com/yurochka/dsptools
 
+# pylint: skip-file
+
 import numpy as np
 
 

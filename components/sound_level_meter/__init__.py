@@ -1,3 +1,5 @@
+# pylint: disable=no-name-in-module,invalid-name,unused-argument
+
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation
@@ -6,7 +8,6 @@ from esphome.components import sensor, i2s
 from esphome.const import (
     CONF_ID,
     CONF_SENSORS,
-    CONF_UPDATE_INTERVAL,
     CONF_FILTERS,
     CONF_WINDOW_SIZE,
     CONF_UPDATE_INTERVAL,

@@ -1,16 +1,17 @@
+---
 esphome:
-  name: sound-level-meter-sensor-comminity
+  name: sound-level-meter
   includes:
     # should contain single line: #include <esp_task_wdt.h>
-    - wdt_include.h  
+    - wdt_include.h
 
   on_boot:
     then:
       - lambda: !lambda |-
-        // increase watchdog timeout to 30 seconds
-        // so that ESP32 don't crash on long http requests
-        // which might happen with sensor.community quite often
-        esp_task_wdt_init(30, false); 
+          // increase watchdog timeout to 30 seconds
+          // so that ESP32 don't crash on long http requests
+          // which might happen with sensor.community quite often
+          esp_task_wdt_init(30, false);
 
 external_components:
   - source: github://stas-sl/esphome-sound-level-meter
@@ -33,7 +34,7 @@ ota:
 http_request:
   # default is 5 seconds, but you might consider increasing it,
   # if data will be missing in sensor.community
-  timeout: 5s  
+  timeout: 5s
 
 wifi:
   ssid: !secret wifi_ssid
@@ -77,8 +78,9 @@ sound_level_meter:
         - type: max
           name: LAmax_125ms_1min
           id: LAmax_125ms_1min
-          window_size: 125ms   # I believe, previously 35ms was used in DNMS FW, 
-                               # but later it was changed to 125ms
+          # I believe, previously 35ms was used in DNMS FW,
+          # but later it was changed to 125ms
+          window_size: 125ms
           unit_of_measurement: dBA
         - type: min
           name: LAmin_125ms_1min
@@ -98,7 +100,7 @@ interval:
                 url: http://api.sensor.community/v1/push-sensor-data/
                 headers:
                   X-Pin: 15
-                  X-Sensor: esp32-... # replace with your sensor ID
+                  X-Sensor: esp32-...  # replace with your sensor ID
                   Content-Type: application/json
                 json: |-
                     root["software_version"] = "ESPHome " ESPHOME_VERSION;

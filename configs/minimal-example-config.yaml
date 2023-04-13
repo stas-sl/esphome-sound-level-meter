@@ -1,3 +1,4 @@
+---
 esphome:
   name: sound-level-meter
 
@@ -19,16 +20,16 @@ i2s:
   sample_rate: 48000            # default: 48000
   bits_per_sample: 32           # default: 32
 
-  # right shift samples. 
-  # for example if mic has 24 bit resolution, and
-  # i2s configured as 32 bits, then audio data will be aligned left (MSB)
-  # and LSB will be padded with zeros, so you might want to shift them right by 8 bits
+  # right shift samples.
+  # for example if mic has 24 bit resolution, and i2s configured as 32 bits,
+  # then audio data will be aligned left (MSB) and LSB will be padded with
+  # zeros, so you might want to shift them right by 8 bits
   bits_shift: 8                 # default: 0
 
 sound_level_meter:
   # update_interval specifies over which interval to aggregate audio data
-  # you can specify default update_interval on top level, but you can also override
-  # it further by specifying it on sensor level
+  # you can specify default update_interval on top level, but you can also
+  # override it further by specifying it on sensor level
   update_interval: 1s           # default: 60s
 
   # buffer_size is in samples (not bytes), so for float data type
@@ -37,14 +38,14 @@ sound_level_meter:
 
   # see your mic datasheet to find sensitivity and reference SPL.
   # those are used to convert dB FS to db SPL
-  mic_sensitivity: -26dB        # default: empty 
-  mic_sensitivity_ref: 94dB     # default: empty 
+  mic_sensitivity: -26dB        # default: empty
+  mic_sensitivity_ref: 94dB     # default: empty
 
-  # for flexibility sensors are organized hierarchically into groups. each group
-  # could have any number of filters, sensors and nested groups. 
-  # for examples if there is a top level group A with filter A and nested group B
-  # with filter B, then for sensors inside group B filters A and then B will be 
-  # applied:
+  # for flexibility sensors are organized hierarchically into groups.
+  # each group can have any number of filters, sensors and nested groups.
+  # for examples if there is a top level group A with filter A and nested
+  # group B with filter B, then for sensors inside group B filters A
+  # and then B will be applied:
   # groups:
   #   # group A
   #   - filters:

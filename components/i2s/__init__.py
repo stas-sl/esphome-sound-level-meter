@@ -1,9 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import pins
-from esphome.const import (
-    CONF_ID
-)
+from esphome.const import CONF_ID
 from esphome.core import coroutine_with_priority
 
 DEPENDENCIES = ["esp32"]
@@ -38,11 +36,12 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_DMA_BUF_COUNT, 8): cv.positive_not_null_int,
             cv.Optional(CONF_DMA_BUF_LEN, 256): cv.positive_not_null_int,
             cv.Optional(CONF_USE_APLL, False): cv.boolean,
-            cv.Optional(CONF_BITS_SHIFT, 0): cv.int_range(0, 32)
+            cv.Optional(CONF_BITS_SHIFT, 0): cv.int_range(0, 32),
         }
     ).extend(cv.COMPONENT_SCHEMA),
-    cv.has_at_least_one_key(CONF_DIN_PIN, CONF_DOUT_PIN)
+    cv.has_at_least_one_key(CONF_DIN_PIN, CONF_DOUT_PIN),
 )
+
 
 @coroutine_with_priority(1.0)
 async def to_code(config):

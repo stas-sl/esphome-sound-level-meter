@@ -1,0 +1,69 @@
+---
+name: CI
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    env:
+      ESPHOME_VERSION: 2023.3.2
+      PLATFORMIO_LIBDEPS_DIR: ~/.platformio/libdeps
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - id: cache
+        name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.platformio
+            .venv
+          key: esphome-${{ env.ESPHOME_VERSION }}
+
+      - name: Set up virtualenv
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install esphome==${{ env.ESPHOME_VERSION }} yamllint pylint
+        if: steps.cache.outputs.cache-hit != 'true'
+
+      - name: Init virtualenv
+        run: |
+          source .venv/bin/activate
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> $GITHUB_ENV
+
+      - name: Run yamllint
+        run: |
+          yamllint $(git ls-files '*.yaml')
+
+      - name: Run pylint
+        run: |
+          pylint $(git ls-files '*.py')
+
+      - name: Run clang-format
+        run: |
+          clang-format-13 --dry-run --Werror $(git ls-files '*.cpp' '*.h')
+
+      - name: Compile configs
+        run: |
+          for f in configs/*-example-config.yaml
+          do
+            sed 's!github://stas-sl/esphome-sound-level-meter!../components!' -i $f
+            esphome compile $f
+          done
