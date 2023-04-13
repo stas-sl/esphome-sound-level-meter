@@ -57,7 +57,7 @@ void SoundLevelMeter::setup() {
 }
 
 void SoundLevelMeter::loop() {
-  std::lock_guard lock(this->defer_mutex_);
+  std::lock_guard<std::mutex> lock(this->defer_mutex_);
   while (!this->defer_queue_.empty()) {
     auto &f = this->defer_queue_.front();
     f();
@@ -66,7 +66,7 @@ void SoundLevelMeter::loop() {
 }
 
 void SoundLevelMeter::turn_on() {
-  std::lock_guard lock(this->on_mutex_);
+  std::lock_guard<std::mutex> lock(this->on_mutex_);
   this->reset();
   this->is_on_ = true;
   this->on_cv_.notify_one();
@@ -74,7 +74,7 @@ void SoundLevelMeter::turn_on() {
 }
 
 void SoundLevelMeter::turn_off() {
-  std::lock_guard lock(this->on_mutex_);
+  std::lock_guard<std::mutex> lock(this->on_mutex_);
   this->reset();
   this->is_on_ = false;
   this->on_cv_.notify_one();
@@ -102,7 +102,7 @@ void SoundLevelMeter::task(void *param) {
   uint64_t process_start;
   while (1) {
     {
-      std::unique_lock lock(this_->on_mutex_);
+      std::unique_lock<std::mutex> lock(this_->on_mutex_);
       this_->on_cv_.wait(lock, [this_] { return this_->is_on_; });
     }
     if (this_->i2s_->read_samples(buffer)) {
@@ -125,7 +125,7 @@ void SoundLevelMeter::task(void *param) {
 }
 
 void SoundLevelMeter::defer(std::function<void()> &&f) {
-  std::lock_guard lock(this->defer_mutex_);
+  std::lock_guard<std::mutex> lock(this->defer_mutex_);
   this->defer_queue_.push(std::move(f));
 }
 
