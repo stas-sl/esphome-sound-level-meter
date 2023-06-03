@@ -21,6 +21,7 @@ CONF_BITS_PER_SAMPLE = "bits_per_sample"
 CONF_DMA_BUF_COUNT = "dma_buf_count"
 CONF_DMA_BUF_LEN = "dma_buf_len"
 CONF_USE_APLL = "use_apll"
+CONF_PDM = "pdm"
 CONF_BITS_SHIFT = "bits_shift"
 
 CONFIG_SCHEMA = cv.All(
@@ -36,6 +37,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_DMA_BUF_COUNT, 8): cv.positive_not_null_int,
             cv.Optional(CONF_DMA_BUF_LEN, 256): cv.positive_not_null_int,
             cv.Optional(CONF_USE_APLL, False): cv.boolean,
+            cv.Optional(CONF_PDM, False): cv.boolean,
             cv.Optional(CONF_BITS_SHIFT, 0): cv.int_range(0, 32),
         }
     ).extend(cv.COMPONENT_SCHEMA),
@@ -63,4 +65,5 @@ async def to_code(config):
     cg.add(var.set_dma_buf_count(config[CONF_DMA_BUF_COUNT]))
     cg.add(var.set_dma_buf_len(config[CONF_DMA_BUF_LEN]))
     cg.add(var.set_use_apll(config[CONF_USE_APLL]))
+    cg.add(var.set_pdm(config[CONF_PDM]))
     cg.add(var.set_bits_shift(config[CONF_BITS_SHIFT]))

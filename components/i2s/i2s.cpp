@@ -19,6 +19,8 @@ void I2SComponent::set_dma_buf_len(int dma_buf_len) { this->dma_buf_len_ = dma_b
 int I2SComponent::get_dma_buf_len() const { return this->dma_buf_len_; }
 void I2SComponent::set_use_apll(bool use_apll) { this->use_apll_ = use_apll; }
 bool I2SComponent::get_use_apll() const { return this->use_apll_; }
+void I2SComponent::set_pdm(bool pdm) { this->pdm_ = pdm; }
+bool I2SComponent::get_pdm() const { return this->pdm_; }
 void I2SComponent::set_bits_shift(uint8_t bits_shift) { this->bits_shift_ = bits_shift; }
 uint8_t I2SComponent::get_bits_shift() const { return this->bits_shift_; }
 float I2SComponent::get_setup_priority() const { return setup_priority::BUS; }
@@ -127,7 +129,8 @@ void I2SComponent::setup() {
 
   ESP_LOGCONFIG(TAG, "Setting up I2S %u ...", this->port_num_);
 
-  i2s_config_t i2s_config = {.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),  // TODO: make it configurable
+  i2s_config_t i2s_config = {.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX |
+                                                (this->pdm_ ? I2S_MODE_PDM : 0)),  // TODO: make it configurable
                              .sample_rate = this->sample_rate_,
                              .bits_per_sample = i2s_bits_per_sample_t(this->bits_per_sample_),
                              .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,  // TODO: make it configurable

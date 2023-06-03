@@ -26,6 +26,8 @@ class I2SComponent : public Component {
   int get_dma_buf_len() const;
   void set_use_apll(bool use_apll);
   bool get_use_apll() const;
+  void set_pdm(bool pdm);
+  bool get_pdm() const;
   void set_bits_shift(uint8_t bits_shift);
   uint8_t get_bits_shift() const;
   bool read(uint8_t *data, size_t len, size_t *bytes_read, TickType_t ticks_to_wait = portMAX_DELAY);
@@ -49,6 +51,7 @@ class I2SComponent : public Component {
   int dma_buf_count_{8};
   int dma_buf_len_{256};
   bool use_apll_{false};
+  bool pdm_{false};
   uint8_t bits_shift_{0};
 };
 }  // namespace i2s
