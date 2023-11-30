@@ -58,7 +58,7 @@ void SoundLevelMeter::setup() {
 
 void SoundLevelMeter::loop() {
   std::lock_guard<std::mutex> lock(this->defer_mutex_);
-  while (!this->defer_queue_.empty()) {
+  if (!this->defer_queue_.empty()) {
     auto &f = this->defer_queue_.front();
     f();
     this->defer_queue_.pop();
