@@ -42,8 +42,13 @@ sound_level_meter:
   update_interval: 60s           # default: 60s
 
   # you can disable (turn off) component by default (on boot)
-  # and turn it on later when needed via sound_level_meter.turn_on/toggle actions
-  is_on: true                    # default: true
+  # and turn it on later when needed via sound_level_meter.turn_on/toggle actions;
+  # when used with switch it might conflict/being overriden by
+  # switch state restoration logic, so you have to either disable it in
+  # switch config and then is_on property here will have effect, 
+  # or completely rely on switch state restoration/initialization and 
+  # any value set here will be ignored
+  is_on: true                   # default: true
 
   # buffer_size is in samples (not bytes), so for float data type
   # number of bytes will be buffer_size * 4
@@ -203,20 +208,30 @@ sound_level_meter:
 switch:
   - platform: template
     name: "Sound Level Meter Switch"
+    # if you want is_on property on component to have effect, then set
+    # restore_mode to DISABLED, or alternatively you can use other modes
+    # (more on them in esphome docs), then is_on property on the component will
+    # be overriden by the switch
+    restore_mode: DISABLED # ALWAYS_OFF | ALWAYS_ON | RESTORE_DEFAULT_OFF | RESTORE_DEFAULT_ON
     lambda: |-
       return id(sound_level_meter1).is_on();
     turn_on_action:
-      then: sound_level_meter.turn_on
+      - sound_level_meter.turn_on
     turn_off_action:
-      then: sound_level_meter.turn_off
+      - sound_level_meter.turn_off
+
+button:
+  - platform: template
+    name: "Sound Level Meter Toggle Button"
+    on_press:
+      - sound_level_meter.toggle: sound_level_meter1
 
 binary_sensor:
   - platform: gpio
     pin: GPIO0
-    name: "Sound Level Meter Toggle Button"
+    name: "Sound Level Meter GPIO Toggle"
     on_press:
-      then:
-        sound_level_meter.toggle: sound_level_meter1
+      - sound_level_meter.toggle: sound_level_meter1
 ```
 
 ### Filter design (math)
