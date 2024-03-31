@@ -121,6 +121,7 @@ void SoundLevelMeter::task(void *param) {
         process_time = process_count = 0;
       }
     }
+    delay(1); // allow task wdt trigger
   }
 }
 
