@@ -22,6 +22,7 @@ bool I2SComponent::get_use_apll() const { return this->use_apll_; }
 void I2SComponent::set_bits_shift(uint8_t bits_shift) { this->bits_shift_ = bits_shift; }
 uint8_t I2SComponent::get_bits_shift() const { return this->bits_shift_; }
 float I2SComponent::get_setup_priority() const { return setup_priority::BUS; }
+void I2SComponent::set_channel(i2s_channel_fmt_t channel) { this->channel_ = channel; }
 
 void I2SComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "I2S %d:", this->port_num_);
@@ -35,6 +36,7 @@ void I2SComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  DMA Buf Len: %u", this->dma_buf_len_);
   ESP_LOGCONFIG(TAG, "  Use APLL: %s", YESNO(this->use_apll_));
   ESP_LOGCONFIG(TAG, "  Bits Shift: %u", this->bits_shift_);
+  ESP_LOGCONFIG(TAG, "  Channel: %02X", this->channel_);
 }
 
 bool I2SComponent::read(uint8_t *data, size_t len, size_t *bytes_read, TickType_t ticks_to_wait) {
@@ -130,7 +132,7 @@ void I2SComponent::setup() {
   i2s_config_t i2s_config = {.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),  // TODO: make it configurable
                              .sample_rate = this->sample_rate_,
                              .bits_per_sample = i2s_bits_per_sample_t(this->bits_per_sample_),
-                             .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,  // TODO: make it configurable
+                             .channel_format = this->channel_,
                              .communication_format = I2S_COMM_FORMAT_STAND_I2S,
                              .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
                              .dma_buf_count = this->dma_buf_count_,

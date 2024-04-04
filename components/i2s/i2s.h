@@ -33,6 +33,7 @@ class I2SComponent : public Component {
   bool read_samples(int16_t *data, size_t num_samples, size_t *samples_read, TickType_t ticks_to_wait = portMAX_DELAY);
   bool read_samples(float *data, size_t num_samples, size_t *samples_read, TickType_t ticks_to_wait = portMAX_DELAY);
   bool read_samples(std::vector<float> &data, TickType_t ticks_to_wait = portMAX_DELAY);
+  void set_channel(i2s_channel_fmt_t channel);
   virtual void setup() override;
   virtual void dump_config() override;
   virtual float get_setup_priority() const override;
@@ -50,6 +51,7 @@ class I2SComponent : public Component {
   int dma_buf_len_{256};
   bool use_apll_{false};
   uint8_t bits_shift_{0};
+  i2s_channel_fmt_t channel_{0x00}; // left
 };
 }  // namespace i2s
 }  // namespace esphome

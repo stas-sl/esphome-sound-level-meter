@@ -23,6 +23,7 @@ i2s:
   dma_buf_count: 8              # default: 8
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false
+  channel: right                 # default: left
 
   # right shift samples.
   # for example if mic has 24 bit resolution, and
