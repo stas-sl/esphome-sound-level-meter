@@ -22,6 +22,14 @@ CONF_DMA_BUF_COUNT = "dma_buf_count"
 CONF_DMA_BUF_LEN = "dma_buf_len"
 CONF_USE_APLL = "use_apll"
 CONF_BITS_SHIFT = "bits_shift"
+CONF_CHANNEL = "channel"
+
+
+i2s_channel_fmt_t = cg.global_ns.enum("i2s_channel_fmt_t")
+CHANNELS = {
+    "left": i2s_channel_fmt_t.I2S_CHANNEL_FMT_ONLY_LEFT,
+    "right": i2s_channel_fmt_t.I2S_CHANNEL_FMT_ONLY_RIGHT,
+}
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
@@ -37,6 +45,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_DMA_BUF_LEN, 256): cv.positive_not_null_int,
             cv.Optional(CONF_USE_APLL, False): cv.boolean,
             cv.Optional(CONF_BITS_SHIFT, 0): cv.int_range(0, 32),
+            cv.Optional(CONF_CHANNEL, default="right"): cv.enum(CHANNELS),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.has_at_least_one_key(CONF_DIN_PIN, CONF_DOUT_PIN),
@@ -64,3 +73,4 @@ async def to_code(config):
     cg.add(var.set_dma_buf_len(config[CONF_DMA_BUF_LEN]))
     cg.add(var.set_use_apll(config[CONF_USE_APLL]))
     cg.add(var.set_bits_shift(config[CONF_BITS_SHIFT]))
+    cg.add(var.set_channel(config[CONF_CHANNEL]))
