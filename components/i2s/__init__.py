@@ -45,7 +45,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_DMA_BUF_LEN, 256): cv.positive_not_null_int,
             cv.Optional(CONF_USE_APLL, False): cv.boolean,
             cv.Optional(CONF_BITS_SHIFT, 0): cv.int_range(0, 32),
-            cv.Optional(CONF_CHANNEL, default="left"): cv.enum(CHANNELS),        
+            cv.Optional(CONF_CHANNEL, default="right"): cv.enum(CHANNELS),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.has_at_least_one_key(CONF_DIN_PIN, CONF_DOUT_PIN),

@@ -36,7 +36,10 @@ void I2SComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  DMA Buf Len: %u", this->dma_buf_len_);
   ESP_LOGCONFIG(TAG, "  Use APLL: %s", YESNO(this->use_apll_));
   ESP_LOGCONFIG(TAG, "  Bits Shift: %u", this->bits_shift_);
-  ESP_LOGCONFIG(TAG, "  Channel: %02X", this->channel_);
+  ESP_LOGCONFIG(TAG, "  Channel: %s",
+                this->channel_ == I2S_CHANNEL_FMT_ONLY_RIGHT  ? "right"
+                : this->channel_ == I2S_CHANNEL_FMT_ONLY_LEFT ? "left"
+                                                              : "invalid");
 }
 
 bool I2SComponent::read(uint8_t *data, size_t len, size_t *bytes_read, TickType_t ticks_to_wait) {
@@ -129,7 +132,7 @@ void I2SComponent::setup() {
 
   ESP_LOGCONFIG(TAG, "Setting up I2S %u ...", this->port_num_);
 
-  i2s_config_t i2s_config = {.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),  // TODO: make it configurable
+  i2s_config_t i2s_config = {.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
                              .sample_rate = this->sample_rate_,
                              .bits_per_sample = i2s_bits_per_sample_t(this->bits_per_sample_),
                              .channel_format = this->channel_,

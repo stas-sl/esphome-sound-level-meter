@@ -51,7 +51,7 @@ class I2SComponent : public Component {
   int dma_buf_len_{256};
   bool use_apll_{false};
   uint8_t bits_shift_{0};
-  i2s_channel_fmt_t channel_{0x00}; // left
+  i2s_channel_fmt_t channel_{I2S_CHANNEL_FMT_ONLY_RIGHT};
 };
 }  // namespace i2s
 }  // namespace esphome

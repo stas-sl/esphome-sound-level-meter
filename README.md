@@ -26,7 +26,12 @@ i2s:
   dma_buf_count: 8              # default: 8
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false
-  channel: right                # default: left
+
+  # according to datasheet when L/R pin is connected to GND,
+  # the mic should output its signal in the left channel,
+  # however in my experience it's the opposite: when I connect
+  # L/R to GND then the signal is in the right channel
+  channel: right                # default: right
 
   # right shift samples.
   # for example if mic has 24 bit resolution, and

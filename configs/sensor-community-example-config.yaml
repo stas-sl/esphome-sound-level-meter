@@ -55,6 +55,7 @@ i2s:
   dma_buf_len: 256
   use_apll: true
   bits_shift: 8
+  channel: right
 
 sound_level_meter:
   update_interval: 150s  # to match original sensor.community firmware settings
