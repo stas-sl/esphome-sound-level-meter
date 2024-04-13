@@ -43,7 +43,11 @@ void I2SComponent::dump_config() {
 }
 
 bool I2SComponent::read(uint8_t *data, size_t len, size_t *bytes_read, TickType_t ticks_to_wait) {
+  uint32_t start = esp_timer_get_time();
+  ESP_LOGD(TAG, "before i2s_read");
   esp_err_t err = i2s_read(i2s_port_t(this->port_num_), data, len, bytes_read, ticks_to_wait);
+  uint32_t duration = esp_timer_get_time() - start;
+  ESP_LOGD(TAG, "after i2s_read; duration: %u; CPU Core: %u", duration, xPortGetCoreID());
 
   if (err != ESP_OK) {
     ESP_LOGW(TAG, "i2s_read failed: %s", esp_err_to_name(err));

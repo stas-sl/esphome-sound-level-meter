@@ -94,10 +94,6 @@ void SoundLevelMeter::task(void *param) {
   SoundLevelMeter *this_ = reinterpret_cast<SoundLevelMeter *>(param);
   std::vector<float> buffer(this_->buffer_size_);
 
-  auto warmup_start = millis();
-  while (millis() - warmup_start < this_->warmup_interval_)
-    this_->i2s_->read_samples(buffer);
-
   uint32_t process_time = 0, process_count = 0;
   uint64_t process_start;
   while (1) {
