@@ -55,6 +55,7 @@ CONF_MIC_SENSITIVITY_REF = "mic_sensitivity_ref"
 CONF_OFFSET = "offset"
 CONF_IS_ON = "is_on"
 
+ICON_WAVEFORM = "mdi:waveform"
 
 CONFIG_SENSOR_SCHEMA = cv.typed_schema(
     {
@@ -62,7 +63,8 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             SoundLevelMeterSensorEq,
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
-            state_class=STATE_CLASS_MEASUREMENT
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon=ICON_WAVEFORM
         ).extend({
             cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds
         }),
@@ -70,7 +72,8 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             SoundLevelMeterSensorMax,
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
-            state_class=STATE_CLASS_MEASUREMENT
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon=ICON_WAVEFORM
         ).extend({
             cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds,
             cv.Required(CONF_WINDOW_SIZE): cv.positive_time_period_milliseconds
@@ -79,7 +82,8 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             SoundLevelMeterSensorMin,
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
-            state_class=STATE_CLASS_MEASUREMENT
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon=ICON_WAVEFORM
         ).extend({
             cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds,
             cv.Required(CONF_WINDOW_SIZE): cv.positive_time_period_milliseconds
@@ -88,7 +92,8 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             SoundLevelMeterSensorPeak,
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
-            state_class=STATE_CLASS_MEASUREMENT
+            state_class=STATE_CLASS_MEASUREMENT,
+            icon=ICON_WAVEFORM
         ).extend({
             cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds
         })

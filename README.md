@@ -264,9 +264,9 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 
 ### Supported platforms
 
-Tested with ESPHome version 2023.2.0, platforms:
-- [x] ESP32 (Arduino v2.0.5, ESP-IDF v4.4.2)
-- [x] ESP32-IDF (ESP-IDF v4.4.2)
+Tested with ESPHome version 2024.9.0, platforms:
+- [x] ESP32 (Arduino v2.0.6, ESP-IDF v4.4.5)
+- [x] ESP32-IDF (ESP-IDF v4.4.7)
 
 ### Sending data to sensor.community
 

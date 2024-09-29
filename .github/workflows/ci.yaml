@@ -11,7 +11,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     env:
-      ESPHOME_VERSION: 2023.11.6
+      ESPHOME_VERSION: 2024.9.0
       PLATFORMIO_LIBDEPS_DIR: ~/.platformio/libdeps
     strategy:
       fail-fast: false
@@ -58,7 +58,7 @@ jobs:
 
       - name: Run clang-format
         run: |
-          clang-format-13 --dry-run --Werror $(git ls-files '*.cpp' '*.h')
+          clang-format --dry-run --Werror $(git ls-files '*.cpp' '*.h')
 
       - name: Compile configs
         run: |
