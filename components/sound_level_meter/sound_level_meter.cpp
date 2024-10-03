@@ -380,7 +380,11 @@ template<typename T> std::vector<T> &BufferPool<T>::current() { return this->buf
 template<typename T> BufferPool<T> &BufferPool<T>::operator++(int) {
   assert(this->index_ < this->max_depth_ - 1 && "Index out of bounds");
   this->index_++;
-  this->buffers_[this->index_] = this->buffers_[this->index_ - 1];
+  auto &dst = this->buffers_[this->index_];
+  auto &src = this->buffers_[this->index_ - 1];
+  auto n = src.size();
+  dst.resize(n);
+  memcpy(&dst[0], &src[0], n * sizeof(T));
   return *this;
 }
 
