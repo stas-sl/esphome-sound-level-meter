@@ -13,6 +13,7 @@ namespace sound_level_meter {
 class SensorGroup;
 class SoundLevelMeterSensor;
 class Filter;
+template<typename T> class BufferPool;
 
 class SoundLevelMeter : public Component {
   friend class SoundLevelMeterSensor;
@@ -35,6 +36,7 @@ class SoundLevelMeter : public Component {
   optional<float> get_mic_sensitivity_ref();
   void set_offset(optional<float> offset);
   optional<float> get_offset();
+  void set_max_groups_depth(uint8_t max_groups_depth);
   virtual void setup() override;
   virtual void loop() override;
   virtual void dump_config() override;
@@ -60,6 +62,7 @@ class SoundLevelMeter : public Component {
   bool is_on_{true};
   std::mutex on_mutex_;
   std::condition_variable on_cv_;
+  uint8_t max_groups_depth_{1};
 
   static void task(void *param);
   // epshome's scheduler is not thred safe, so we have to use custom thread safe implementation
@@ -74,7 +77,7 @@ class SensorGroup {
   void add_sensor(SoundLevelMeterSensor *sensor);
   void add_group(SensorGroup *group);
   void add_filter(Filter *filter);
-  void process(std::vector<float> &buffer);
+  void process(BufferPool<float> &buffers);
   void dump_config(const char *prefix);
   void reset();
 
@@ -172,6 +175,21 @@ class SOS_Filter : public Filter {
   std::vector<std::array<float, 2>> state_;
 
   virtual void reset() override;
+};
+
+template<typename T> class BufferPool {
+ public:
+  BufferPool(uint32_t buffer_size, uint32_t max_depth);
+  std::vector<T> &current();
+  BufferPool<T> &operator++(int);
+  BufferPool<T> &operator--(int);
+  operator std::vector<T> &();
+
+ private:
+  uint32_t buffer_size_;
+  uint32_t max_depth_;
+  uint32_t index_{0};
+  std::vector<std::vector<T>> buffers_;
 };
 
 template<typename... Ts> class TurnOnAction : public Action<Ts...> {
