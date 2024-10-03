@@ -7,6 +7,7 @@
 #include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/i2s/i2s.h"
+#include "dsps_biquad.h"
 
 namespace esphome {
 namespace sound_level_meter {

@@ -345,20 +345,55 @@ SOS_Filter::SOS_Filter(std::initializer_list<std::initializer_list<float>> &&coe
 }
 
 // direct form 2 transposed
+// void SOS_Filter::process(std::vector<float> &data) {
+//   int n = data.size();
+//   int m = this->coeffs_.size();
+//   for (int j = 0; j < m; j++) {
+//     for (int i = 0; i < n; i++) {
+//       // y[i] = b0 * x[i] + s0
+//       float yi = this->coeffs_[j][0] * data[i] + this->state_[j][0];
+//       // s0 = b1 * x[i] - a1 * y[i] + s1
+//       this->state_[j][0] = this->coeffs_[j][1] * data[i] - this->coeffs_[j][3] * yi + this->state_[j][1];
+//       // s1 = b2 * x[i] - a2 * y[i]
+//       this->state_[j][1] = this->coeffs_[j][2] * data[i] - this->coeffs_[j][4] * yi;
+
+//       data[i] = yi;
+//     }
+//   }
+// }
+
+/*
+
+esphome:
+  platformio_options:
+    board_build.esp-idf.preserve_source_file_extension: "yes"
+    build_unflags:
+      - -Werror=all
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32_DEFAULT_CPU_FREQ_240: y
+      CONFIG_COMPILER_OPTIMIZATION_SIZE: n
+      CONFIG_COMPILER_OPTIMIZATION_PERF: y
+    components:
+      - name: esp-dsp
+        source: github://espressif/esp-dsp
+
+*/
+
 void SOS_Filter::process(std::vector<float> &data) {
   int n = data.size();
   int m = this->coeffs_.size();
   for (int j = 0; j < m; j++) {
-    for (int i = 0; i < n; i++) {
-      // y[i] = b0 * x[i] + s0
-      float yi = this->coeffs_[j][0] * data[i] + this->state_[j][0];
-      // s0 = b1 * x[i] - a1 * y[i] + s1
-      this->state_[j][0] = this->coeffs_[j][1] * data[i] - this->coeffs_[j][3] * yi + this->state_[j][1];
-      // s1 = b2 * x[i] - a2 * y[i]
-      this->state_[j][1] = this->coeffs_[j][2] * data[i] - this->coeffs_[j][4] * yi;
+    // dsps_biquad_f32_ansi - any
+    // dsps_biquad_f32_ae32 - ESP32
+    // dsps_biquad_f32_aes3 - ESP32 S3
 
-      data[i] = yi;
-    }
+    // direct form 2
+    dsps_biquad_f32_ae32(&data[0], &data[0], data.size(), &this->coeffs_[j][0], &this->state_[j][0]);
   }
 }
 
