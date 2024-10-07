@@ -10,10 +10,9 @@
 
 namespace esphome {
 namespace sound_level_meter {
-class SensorGroup;
 class SoundLevelMeterSensor;
 class Filter;
-template<typename T> class BufferPool;
+template<typename T> class BufferStack;
 
 class SoundLevelMeter : public Component {
   friend class SoundLevelMeterSensor;
@@ -25,7 +24,6 @@ class SoundLevelMeter : public Component {
   uint32_t get_buffer_size();
   uint32_t get_sample_rate();
   void set_i2s(i2s::I2SComponent *i2s);
-  void add_group(SensorGroup *group);
   void set_warmup_interval(uint32_t warmup_interval);
   void set_task_stack_size(uint32_t task_stack_size);
   void set_task_priority(uint8_t task_priority);
@@ -36,7 +34,9 @@ class SoundLevelMeter : public Component {
   optional<float> get_mic_sensitivity_ref();
   void set_offset(optional<float> offset);
   optional<float> get_offset();
-  void set_max_groups_depth(uint8_t max_groups_depth);
+  void set_max_buffers(uint8_t max_buffers);
+  void add_sensor(SoundLevelMeterSensor *sensor);
+  void add_dsp_filter(Filter *dsp_filter);
   virtual void setup() override;
   virtual void loop() override;
   virtual void dump_config() override;
@@ -47,7 +47,8 @@ class SoundLevelMeter : public Component {
 
  protected:
   i2s::I2SComponent *i2s_{nullptr};
-  std::vector<SensorGroup *> groups_;
+  std::vector<Filter *> dsp_filters_;
+  std::vector<SoundLevelMeterSensor *> sensors_;
   size_t buffer_size_{256};
   uint32_t warmup_interval_{500};
   uint32_t task_stack_size_{1024};
@@ -62,43 +63,31 @@ class SoundLevelMeter : public Component {
   bool is_on_{true};
   std::mutex on_mutex_;
   std::condition_variable on_cv_;
-  uint8_t max_groups_depth_{1};
+  uint8_t max_buffers_{1};
 
-  static void task(void *param);
+  void sort_sensors();
+  void process(BufferStack<float> &buffers);
   // epshome's scheduler is not thred safe, so we have to use custom thread safe implementation
   // to execute sensor updates in main loop
   void defer(std::function<void()> &&f);
   void reset();
-};
 
-class SensorGroup {
- public:
-  void set_parent(SoundLevelMeter *parent);
-  void add_sensor(SoundLevelMeterSensor *sensor);
-  void add_group(SensorGroup *group);
-  void add_filter(Filter *filter);
-  void process(BufferPool<float> &buffers);
-  void dump_config(const char *prefix);
-  void reset();
-
- protected:
-  SoundLevelMeter *parent_{nullptr};
-  std::vector<SensorGroup *> groups_;
-  std::vector<SoundLevelMeterSensor *> sensors_;
-  std::vector<Filter *> filters_;
+  static void task(void *param);
 };
 
 class SoundLevelMeterSensor : public sensor::Sensor {
-  friend class SensorGroup;
+  friend SoundLevelMeter;
 
  public:
   void set_parent(SoundLevelMeter *parent);
   void set_update_interval(uint32_t update_interval);
+  void add_dsp_filter(Filter *dsp_filter);
   virtual void process(std::vector<float> &buffer) = 0;
   void defer_publish_state(float state);
 
  protected:
   SoundLevelMeter *parent_{nullptr};
+  std::vector<Filter *> dsp_filters_;
   uint32_t update_samples_{0};
   float adjust_dB(float dB, bool is_rms = true);
 
@@ -156,7 +145,7 @@ class SoundLevelMeterSensorPeak : public SoundLevelMeterSensor {
 };
 
 class Filter {
-  friend class SensorGroup;
+  friend SoundLevelMeter;
 
  public:
   virtual void process(std::vector<float> &data) = 0;
@@ -177,12 +166,13 @@ class SOS_Filter : public Filter {
   virtual void reset() override;
 };
 
-template<typename T> class BufferPool {
+template<typename T> class BufferStack {
  public:
-  BufferPool(uint32_t buffer_size, uint32_t max_depth);
+  BufferStack(uint32_t buffer_size, uint32_t buffer_count);
   std::vector<T> &current();
-  BufferPool<T> &operator++(int);
-  BufferPool<T> &operator--(int);
+  void push();
+  void pop();
+  void reset();
   operator std::vector<T> &();
 
  private:

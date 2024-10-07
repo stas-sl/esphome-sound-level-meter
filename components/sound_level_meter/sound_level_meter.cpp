@@ -20,7 +20,6 @@ void SoundLevelMeter::set_buffer_size(uint32_t buffer_size) { this->buffer_size_
 uint32_t SoundLevelMeter::get_buffer_size() { return this->buffer_size_; }
 uint32_t SoundLevelMeter::get_sample_rate() { return this->i2s_->get_sample_rate(); }
 void SoundLevelMeter::set_i2s(i2s::I2SComponent *i2s) { this->i2s_ = i2s; }
-void SoundLevelMeter::add_group(SensorGroup *group) { this->groups_.push_back(group); }
 void SoundLevelMeter::set_warmup_interval(uint32_t warmup_interval) { this->warmup_interval_ = warmup_interval; }
 void SoundLevelMeter::set_task_stack_size(uint32_t task_stack_size) { this->task_stack_size_ = task_stack_size; }
 void SoundLevelMeter::set_task_priority(uint8_t task_priority) { this->task_priority_ = task_priority; }
@@ -33,7 +32,9 @@ void SoundLevelMeter::set_mic_sensitivity_ref(optional<float> mic_sensitivity_re
 optional<float> SoundLevelMeter::get_mic_sensitivity_ref() { return this->mic_sensitivity_ref_; }
 void SoundLevelMeter::set_offset(optional<float> offset) { this->offset_ = offset; }
 optional<float> SoundLevelMeter::get_offset() { return this->offset_; }
-void SoundLevelMeter::set_max_groups_depth(uint8_t max_groups_depth) { this->max_groups_depth_ = max_groups_depth; }
+void SoundLevelMeter::set_max_buffers(uint8_t max_buffers) { this->max_buffers_ = max_buffers; }
+void SoundLevelMeter::add_sensor(SoundLevelMeterSensor *sensor) { this->sensors_.push_back(sensor); }
+void SoundLevelMeter::add_dsp_filter(Filter *dsp_filter) { this->dsp_filters_.push_back(dsp_filter); }
 
 void SoundLevelMeter::dump_config() {
   ESP_LOGCONFIG(TAG, "Sound Level Meter:");
@@ -43,16 +44,13 @@ void SoundLevelMeter::dump_config() {
   ESP_LOGCONFIG(TAG, "  Task Priority: %u", this->task_priority_);
   ESP_LOGCONFIG(TAG, "  Task Core: %u", this->task_core_);
   LOG_UPDATE_INTERVAL(this);
-  if (this->groups_.size() > 0) {
-    ESP_LOGCONFIG(TAG, "  Groups:");
-    for (int i = 0; i < this->groups_.size(); i++) {
-      ESP_LOGCONFIG(TAG, "    Group %u:", i);
-      this->groups_[i]->dump_config("      ");
-    }
-  }
+  ESP_LOGCONFIG(TAG, "Sensors:");
+  for (auto *s : this->sensors_)
+    LOG_SENSOR("    ", "Sound Pressure Level", s);
 }
 
 void SoundLevelMeter::setup() {
+  this->sort_sensors();
   xTaskCreatePinnedToCore(SoundLevelMeter::task, "sound_level_meter", this->task_stack_size_, this,
                           this->task_priority_, nullptr, this->task_core_);
 }
@@ -93,7 +91,7 @@ bool SoundLevelMeter::is_on() { return this->is_on_; }
 
 void SoundLevelMeter::task(void *param) {
   SoundLevelMeter *this_ = reinterpret_cast<SoundLevelMeter *>(param);
-  BufferPool<float> buffers(this_->buffer_size_, this_->max_groups_depth_);
+  BufferStack<float> buffers(this_->buffer_size_, this_->max_buffers_);
 
   auto warmup_start = millis();
   while (millis() - warmup_start < this_->warmup_interval_)
@@ -106,11 +104,11 @@ void SoundLevelMeter::task(void *param) {
       std::unique_lock<std::mutex> lock(this_->on_mutex_);
       this_->on_cv_.wait(lock, [this_] { return this_->is_on_; });
     }
+    buffers.reset();
     if (this_->i2s_->read_samples(buffers)) {
       process_start = esp_timer_get_time();
 
-      for (auto *g : this_->groups_)
-        g->process(buffers);
+      this_->process(buffers);
 
       process_time += esp_timer_get_time() - process_start;
       process_count += buffers.current().size();
@@ -118,10 +116,40 @@ void SoundLevelMeter::task(void *param) {
       auto sr = this_->get_sample_rate();
       if (process_count >= sr * (this_->update_interval_ / 1000.f)) {
         auto t = uint32_t(float(process_time) / process_count * (sr / 1000.f));
-        ESP_LOGD(TAG, "Processing time per 1s of audio data (%u samples): %u ms", sr, t);
+        auto cpu_util = float(process_time) / 1000 / this_->update_interval_;
+        ESP_LOGE(TAG, "CPU (Core %u) Utilization: %.1f %%", xPortGetCoreID(), cpu_util * 100);
         process_time = process_count = 0;
       }
     }
+  }
+}
+
+// sorting sensors in such a way that sensors with same filters (or prefix) come
+// near each other
+void SoundLevelMeter::sort_sensors() {
+  std::sort(this->sensors_.begin(), this->sensors_.end(), [](SoundLevelMeterSensor *a, SoundLevelMeterSensor *b) {
+    return std::lexicographical_compare(a->dsp_filters_.begin(), a->dsp_filters_.end(), b->dsp_filters_.begin(),
+                                        b->dsp_filters_.end());
+  });
+}
+
+void SoundLevelMeter::process(BufferStack<float> &buffers) {
+  std::vector<Filter *> prefix;
+  for (auto s : this->sensors_) {
+    int i = 0, n = s->dsp_filters_.size(), m = prefix.size();
+    for (; i < n && i < m && s->dsp_filters_[i] == prefix[i]; i++)
+      ;
+    while (prefix.size() > i) {
+      prefix.pop_back();
+      buffers.pop();
+    }
+    for (; i < s->dsp_filters_.size(); i++) {
+      auto f = s->dsp_filters_[i];
+      prefix.push_back(f);
+      buffers.push();
+      f->process(buffers);
+    }
+    s->process(buffers);
   }
 }
 
@@ -131,55 +159,10 @@ void SoundLevelMeter::defer(std::function<void()> &&f) {
 }
 
 void SoundLevelMeter::reset() {
-  for (auto *g : this->groups_)
-    g->reset();
-}
-
-/* SensorGroup */
-
-void SensorGroup::set_parent(SoundLevelMeter *parent) { this->parent_ = parent; }
-void SensorGroup::add_sensor(SoundLevelMeterSensor *sensor) { this->sensors_.push_back(sensor); }
-void SensorGroup::add_group(SensorGroup *group) { this->groups_.push_back(group); }
-void SensorGroup::add_filter(Filter *filter) { this->filters_.push_back(filter); }
-
-void SensorGroup::dump_config(const char *prefix) {
-  ESP_LOGCONFIG(TAG, "%sSensors:", prefix);
-  for (auto *s : this->sensors_)
-    LOG_SENSOR((std::string(prefix) + "  ").c_str(), "Sound Pressure Level", s);
-
-  if (this->groups_.size() > 0) {
-    ESP_LOGCONFIG(TAG, "%sGroups:", prefix);
-    for (int i = 0; i < this->groups_.size(); i++) {
-      ESP_LOGCONFIG(TAG, "%s  Group %u:", prefix, i);
-      this->groups_[i]->dump_config((std::string(prefix) + "    ").c_str());
-    }
-  }
-}
-
-void SensorGroup::process(BufferPool<float> &buffers) {
-  if (this->filters_.size() > 0)
-    buffers++;
-  if (this->filters_.size() > 0)
-    for (auto f : this->filters_)
-      f->process(buffers);
-
-  for (auto s : this->sensors_)
-    s->process(buffers);
-
-  for (auto g : this->groups_)
-    g->process(buffers);
-
-  if (this->filters_.size() > 0)
-    buffers--;
-}
-
-void SensorGroup::reset() {
-  for (auto f : this->filters_)
+  for (auto f : this->dsp_filters_)
     f->reset();
   for (auto s : this->sensors_)
     s->reset();
-  for (auto g : this->groups_)
-    g->reset();
 }
 
 /* SoundLevelMeterSensor */
@@ -192,6 +175,8 @@ void SoundLevelMeterSensor::set_parent(SoundLevelMeter *parent) {
 void SoundLevelMeterSensor::set_update_interval(uint32_t update_interval) {
   this->update_samples_ = this->parent_->get_sample_rate() * (update_interval / 1000.f);
 }
+
+void SoundLevelMeterSensor::add_dsp_filter(Filter *dsp_filter) { this->dsp_filters_.push_back(dsp_filter); }
 
 void SoundLevelMeterSensor::defer_publish_state(float state) {
   this->parent_->defer([this, state]() { this->publish_state(state); });
@@ -367,17 +352,18 @@ void SOS_Filter::reset() {
     s = {0.f, 0.f};
 }
 
-/* BufferPool */
+/* BufferStack */
 
 template<typename T>
-BufferPool<T>::BufferPool(uint32_t buffer_size, uint32_t max_depth) : buffer_size_(buffer_size), max_depth_(max_depth) {
+BufferStack<T>::BufferStack(uint32_t buffer_size, uint32_t max_depth)
+    : buffer_size_(buffer_size), max_depth_(max_depth) {
   this->buffers_.resize(max_depth);
   this->buffers_[0].resize(buffer_size);
 }
 
-template<typename T> std::vector<T> &BufferPool<T>::current() { return this->buffers_[this->index_]; }
+template<typename T> std::vector<T> &BufferStack<T>::current() { return this->buffers_[this->index_]; }
 
-template<typename T> BufferPool<T> &BufferPool<T>::operator++(int) {
+template<typename T> void BufferStack<T>::push() {
   assert(this->index_ < this->max_depth_ - 1 && "Index out of bounds");
   this->index_++;
   auto &dst = this->buffers_[this->index_];
@@ -385,16 +371,16 @@ template<typename T> BufferPool<T> &BufferPool<T>::operator++(int) {
   auto n = src.size();
   dst.resize(n);
   memcpy(&dst[0], &src[0], n * sizeof(T));
-  return *this;
 }
 
-template<typename T> BufferPool<T> &BufferPool<T>::operator--(int) {
+template<typename T> void BufferStack<T>::pop() {
   assert(this->index_ >= 1 && "Index out of bounds");
   this->index_--;
-  return *this;
 }
 
-template<typename T> BufferPool<T>::operator std::vector<T> &() { return this->current(); }
+template<typename T> void BufferStack<T>::reset() { this->index_ = 0; }
+
+template<typename T> BufferStack<T>::operator std::vector<T> &() { return this->current(); }
 
 }  // namespace sound_level_meter
 }  // namespace esphome
