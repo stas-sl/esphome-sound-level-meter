@@ -1,0 +1,473 @@
+esphome:
+  name: sound-level-meter
+  friendly_name: 10 Bands Spectrum Analyzer
+  platformio_options:
+    board_build.f_cpu: 240000000
+    lib_ignore:
+      - AsyncTCP-esphome
+      - ESPAsyncWebServer-esphome
+  # you can use standard ESPAsyncWebServer-esphome server, 
+  # but I find this fork significantly more stable, 
+  # especially with frequent updated
+  libraries:
+    - FS
+    - WiFi
+    - Update
+    - mathieucarbou/ESPAsyncWebServer @ 3.3.7
+
+external_components:
+  - source: github://stas-sl/esphome-sound-level-meter
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: ERROR
+
+web_server:
+  port: 80
+  version: 3
+
+switch:
+  - platform: template
+    name: "On"
+    restore_mode: DISABLED
+    web_server_sorting_weight: 1
+    lambda: |-
+      return id(slm).is_on();
+    turn_on_action:
+      - sound_level_meter.turn_on
+    turn_off_action:
+      - sound_level_meter.turn_off
+
+light:
+  - platform: neopixelbus
+    id: led
+    type: GRB
+    variant: WS2812
+    pin: 48
+    num_leds: 1
+    name: LED
+    default_transition_length: 0s
+    flash_transition_length: 0s
+    gamma_correct: 1
+    web_server_sorting_weight: 2
+
+i2s:
+  ws_pin: 40
+  bck_pin: 39
+  din_pin: 38
+  sample_rate: 48000
+  bits_per_sample: 32
+  dma_buf_count: 8
+  dma_buf_len: 256
+  use_apll: true
+  bits_shift: 8
+  channel: right
+
+# yamllint disable rule:line-length
+sound_level_meter:
+  id: slm
+  is_on: false
+  update_interval: 100ms
+  buffer_size: 1024
+  warmup_interval: 500ms
+  task_stack_size: 4096
+  task_priority: 2
+  task_core: 0
+  mic_sensitivity: -26dB
+  mic_sensitivity_ref: 94dB
+  offset: 0dB
+  groups:
+    - filters:
+        - type: sos
+          coeffs:
+            # A-weighting:
+            #       b0           b1            b2             a1            a2
+            - [0.16999495, 0.741029, 0.52548885, -0.11321865, -0.056549273]
+            - [1., -2.00027, 1.0002706, -0.03433284, -0.79215795]
+            - [1., -0.709303, -0.29071867, -1.9822421, 0.9822986]
+      sensors:
+        - type: eq
+          name: LAeq
+          id: LAeq
+          unit_of_measurement: dBA
+          web_server_sorting_weight: 3
+          on_value:
+            then:
+              - script.execute: led_config
+
+    # 10 bands 
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 0 (center=31 Hz) filter:
+            #               b0                          b1                          b2                          a1                          a2                          
+            - [ 0.000000000000000009099907, 0.000000000000000018199815, 0.000000000000000009099907, -1.9969199                , 0.9969402                  ]
+            - [ 1.                        , 2.                        , 1.                        , -1.9974198                , 0.9974476                  ]
+            - [ 1.                        , 2.                        , 1.                        , -1.9974661                , 0.9974798                  ]
+            - [ 1.                        , -2.                       , 1.                        , -1.9984561                , 0.9984662                  ]
+            - [ 1.                        , -2.                       , 1.                        , -1.9989763                , 0.9990091                  ]
+            - [ 1.                        , -2.                       , 1.                        , -1.9994857                , 0.99949425                 ]
+      sensors:
+        - type: eq
+          name: L_octave0_eq
+          id: L_octave0_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band0
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 1 (center=62 Hz) filter:
+            #              b0                        b1                        b2                        a1                        a2                        
+            - [ 0.0000000000000005791561, 0.0000000000000011583122, 0.0000000000000005791561, -1.9938086              , 0.9938897                ]
+            - [ 1.                      , 2.                      , 1.                      , -1.9947907              , 0.9949018                ]
+            - [ 1.                      , 2.                      , 1.                      , -1.994911               , 0.9949659                ]
+            - [ 1.                      , -2.                     , 1.                      , -1.9968946              , 0.9969348                ]
+            - [ 1.                      , -2.                     , 1.                      , -1.9978882              , 0.9980192                ]
+            - [ 1.                      , -2.                     , 1.                      , -1.9989547              , 0.99898875               ]
+      sensors:
+        - type: eq
+          name: L_octave1_eq
+          id: L_octave1_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band1
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 2 (center=125 Hz) filter:
+            #             b0                      b1                      b2                      a1                      a2                      
+            - [ 0.00000000000003665589, 0.00000000000007331178, 0.00000000000003665589, -1.9874934            , 0.9878166              ]
+            - [ 1.                    , 2.                    , 1.                    , -1.9893862            , 0.98982966             ]
+            - [ 1.                    , 2.                    , 1.                    , -1.9897376            , 0.98995703             ]
+            - [ 1.                    , -2.                   , 1.                    , -1.9937185            , 0.9938788              ]
+            - [ 1.                    , -2.                   , 1.                    , -1.9955188            , 0.99604243             ]
+            - [ 1.                    , -2.                   , 1.                    , -1.9978421            , 0.9979785              ]
+      sensors:
+        - type: eq
+          name: L_octave2_eq
+          id: L_octave2_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band2
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 3 (center=250 Hz) filter:
+            #            b0                     b1                     b2                     a1                     a2                     
+            - [ 0.0000000000022945805, 0.000000000004589161 , 0.0000000000022945805, -1.9744959           , 0.9757806             ]
+            - [ 1.                   , 2.                   , 1.                   , -1.9779989           , 0.9797636             ]
+            - [ 1.                   , 2.                   , 1.                   , -1.9791404           , 0.98001343            ]
+            - [ 1.                   , -2.                  , 1.                   , -1.9871548           , 0.9877941             ]
+            - [ 1.                   , -2.                  , 1.                   , -1.9900113           , 0.9921015             ]
+            - [ 1.                   , -2.                  , 1.                   , -1.9954154           , 0.99596083            ]
+
+      sensors:
+        - type: eq
+          name: L_octave3_eq
+          id: L_octave3_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band3
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 4 (center=500 Hz) filter:
+            #           b0                   b1                   b2                   a1                   a2                   
+            - [ 0.00000000014054455, 0.0000000002810891 , 0.00000000014054455, -1.9470631         , 0.9521398           ]
+            - [ 1.                 , 2.                 , 1.                 , -1.9529577         , 0.9599437           ]
+            - [ 1.                 , 2.                 , 1.                 , -1.9569576         , 0.9604144           ]
+            - [ 1.                 , -2.                , 1.                 , -1.973189          , 0.9757302           ]
+            - [ 1.                 , -2.                , 1.                 , -1.9759496         , 0.984273            ]
+            - [ 1.                 , -2.                , 1.                 , -1.9897592         , 0.9919358           ]
+
+      sensors:
+        - type: eq
+          name: L_octave4_eq
+          id: L_octave4_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band4
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 5 (center=1000 Hz) filter:
+            #          b0                 b1                 b2                 a1                 a2                 
+            - [ 0.000000008251459, 0.000000016502918, 0.000000008251459, -1.8866911       , 0.9065092         ]
+            - [ 1.               , 2.               , 1.               , -1.8941872       , 0.9215454         ]
+            - [ 1.               , 2.               , 1.               , -1.9087527       , 0.92230463        ]
+            - [ 1.               , -2.              , 1.               , -1.9419569       , 0.9519943         ]
+            - [ 1.               , -2.              , 1.               , -1.9358865       , 0.9688534         ]
+            - [ 1.               , -2.              , 1.               , -1.9752525       , 0.98391926        ]
+
+      sensors:
+        - type: eq
+          name: L_octave5_eq
+          id: L_octave5_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band5
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 6 (center=2000 Hz) filter:
+            #          b0                b1                b2                a1                a2                
+            - [ 0.00000044709714, 0.0000008941943 , 0.00000044709714, -1.7457979      , 0.8213167        ]
+            - [ 1.              , 2.              , 1.              , -1.7449005      , 0.8496485        ]
+            - [ 1.              , 2.              , 1.              , -1.7979017      , 0.8499664        ]
+            - [ 1.              , -2.             , 1.              , -1.8667517      , 0.9058704        ]
+            - [ 1.              , -2.             , 1.              , -1.8103262      , 0.93914396       ]
+            - [ 1.              , -2.             , 1.              , -1.9336454      , 0.96796          ]
+
+      sensors:
+        - type: eq
+          name: L_octave6_eq
+          id: L_octave6_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band6
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 7 (center=4000 Hz) filter:
+            #         b0               b1               b2               a1               a2               
+            - [ 0.000020980988 , 0.000041961976 , 0.000020980988 , -1.397504      , 0.67165947      ]
+            - [ 1.             , 2.             , 1.             , -1.5258232     , 0.7176544       ]
+            - [ 1.             , 2.             , 1.             , -1.3429118     , 0.7248687       ]
+            - [ 1.             , -2.            , 1.             , -1.6694807     , 0.8174381       ]
+            - [ 1.             , -2.            , 1.             , -1.4007593     , 0.8855408       ]
+            - [ 1.             , -2.            , 1.             , -1.8019891     , 0.9358542       ]
+
+      sensors:
+        - type: eq
+          name: L_octave7_eq
+          id: L_octave7_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band7
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 8 (center=8000 Hz) filter:
+            #         b0               b1               b2               a1               a2               
+            - [ 0.0007832286   , 0.0015664572   , 0.0007832286   , -0.53639096    , 0.4363393       ]
+            - [ 1.             , 2.             , 1.             , -0.8419056     , 0.48335508      ]
+            - [ 1.             , 2.             , 1.             , -0.30111465    , 0.5491509       ]
+            - [ 1.             , -2.            , 1.             , -1.1275086     , 0.64473253      ]
+            - [ 1.             , -2.            , 1.             , -0.18330558    , 0.81083125      ]
+            - [ 1.             , -2.            , 1.             , -1.367888      , 0.866632        ]
+
+      sensors:
+        - type: eq
+          name: L_octave8_eq
+          id: L_octave8_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band8
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+
+    - filters:
+        - type: sos
+          coeffs:
+            # Band 9 (center=16000 Hz) filter:
+            #         b0               b1               b2               a1               a2               
+            - [ 0.022418123    , -0.044836245   , 0.022418123    , 0.089420125    , 0.029108621     ]
+            - [ 1.             , -2.            , 1.             , -0.021550033   , 0.22185375      ]
+            - [ 1.             , -2.            , 1.             , -0.13376659    , 0.63903666      ]
+            - [ 1.             , 2.             , 1.             , 1.6267635      , 0.6648208       ]
+            - [ 1.             , 2.             , 1.             , 1.749084       , 0.7821957       ]
+            - [ 1.             , 2.             , 1.             , 1.8919677      , 0.92343533      ]
+
+      sensors:
+        - type: eq
+          name: L_octave9_eq
+          id: L_octave9_eq
+          unit_of_measurement: dB
+          internal: true
+          on_value:
+            then:
+              - number.set:
+                  id: number_band9
+                  value: !lambda 'return std::isnan(x) ? 20 : x;'
+# yamllint enable
+
+number:
+  - platform: template
+    name: "31 Hz"
+    id: number_band0
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 4
+    icon: mdi:waveform
+  - platform: template
+    name: "62 Hz"
+    id: number_band1
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 5
+    icon: mdi:waveform
+  - platform: template
+    name: "125 Hz"
+    id: number_band2
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 6
+    icon: mdi:waveform
+  - platform: template
+    name: "250 Hz"
+    id: number_band3
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 7
+    icon: mdi:waveform
+  - platform: template
+    name: "500 Hz"
+    id: number_band4
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 8
+    icon: mdi:waveform
+  - platform: template
+    name: "1 kHz"
+    id: number_band5
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 9
+    icon: mdi:waveform
+  - platform: template
+    name: "2 kHz"
+    id: number_band6
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 10
+    icon: mdi:waveform
+  - platform: template
+    name: "4 kHz"
+    id: number_band7
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 11
+    icon: mdi:waveform
+  - platform: template
+    name: "8 kHz"
+    id: number_band8
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 12
+    icon: mdi:waveform
+  - platform: template
+    name: "16 kHz"
+    id: number_band9
+    optimistic: true
+    min_value: 20
+    max_value: 100
+    step: 0.1
+    web_server_sorting_weight: 13
+    icon: mdi:waveform
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  # it could be useful to reduce RF interference on some boards
+  output_power: 8.5dB  
+
+script:
+  - id: led_config
+    then:
+      - lambda: |-
+          if (!std::isnan(id(LAeq).state)) {
+            std::vector<float> v = {
+              id(L_octave0_eq).state, 
+              id(L_octave1_eq).state,  
+              id(L_octave2_eq).state,  
+              id(L_octave3_eq).state,  
+              id(L_octave4_eq).state,  
+              id(L_octave5_eq).state,  
+              id(L_octave6_eq).state,  
+              id(L_octave7_eq).state,  
+              id(L_octave8_eq).state,  
+              id(L_octave9_eq).state
+            };
+            auto max_it = std::max_element(v.begin(), v.end());
+            int index = std::distance(v.begin(), max_it);
+            float r, g, b;
+            float l = max(0.12, (id(LAeq).state - 20) / 80.0);
+            hsv_to_rgb(index / 10. * 288.0, 1, 1, r, g, b);
+            auto call = id(led).turn_on();
+            call.set_brightness(l);
+            call.set_rgb(r, g, b);
+            call.perform();
+          } else {
+            auto call = id(led).turn_off();
+            call.set_brightness(0);
+            call.set_rgb(0, 0, 0);
+            call.perform();
+          }

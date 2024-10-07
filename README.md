@@ -240,9 +240,24 @@ binary_sensor:
       - sound_level_meter.toggle: sound_level_meter1
 ```
 
+### Sending data to sensor.community
+
+See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
+
+
 ### Filter design (math)
 
 Check out [filter-design notebook](math/filter-design.ipynb) to learn how those SOS coefficients were calculated.
+
+### 10 bands spectrum analyzer
+
+Although manually specifying IIR/SOS filters might not be the most user-friendly approach, it offers significant flexibility. This method lets you design and apply any filter you need, as long as you know how to tailor it to your requirements. Originally, my intention wasn’t to go beyond standard weighting functions like A/C, but I ended up experimenting with different filters. To showcase its capabilities, I created a 10-band spectrum analyzer using ten 6th-order filters, each targeting a specific frequency band - simply by writing the appropriate configuration file, without needing to modify the component's source code.
+
+I set the `update_interval: 100ms` to achieve real-time visualization, displaying the data as sliders using the web server’s number/slider component. While this is probably not the intended use of the sliders and web server, since they may not be designed to handle such frequent updates, it does push the ESP32 to its limits, yet it still works. The sound meter component, with 10 x 6 = 60 SOS filters, uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task, and you'll need to be cautious with it. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
+
+While this setup serves as a stress test for real-time updates, you could also use it to monitor different frequency bands over longer time intervals with less frequent updates. Alternatively, you could filter only specific frequencies - you don’t have to use all 10 bands - as you can design your own IIR filters based on your needs.
+
+Here is an example config: [10-bands-spectrum-analyzer.yaml](configs/10-bands-spectrum-analyzer.yaml)
 
 ### Performance
 
@@ -267,10 +282,6 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 Tested with ESPHome version 2024.9.0, platforms:
 - [x] ESP32 (Arduino v2.0.6, ESP-IDF v4.4.5)
 - [x] ESP32-IDF (ESP-IDF v4.4.7)
-
-### Sending data to sensor.community
-
-See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
 
 ### References
 
