@@ -30,8 +30,8 @@ i2s:
 
   # according to datasheet when L/R pin is connected to GND,
   # the mic should output its signal in the left channel,
-  # however in my experience it's the opposite: when I connect
-  # L/R to GND then the signal is in the right channel
+  # but on some boards I've encountered the opposite, 
+  # so you can try both
   channel: right                # default: right
 
   # right shift samples.

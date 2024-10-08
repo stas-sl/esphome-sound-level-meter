@@ -116,7 +116,7 @@ void SoundLevelMeter::task(void *param) {
       if (process_count >= sr * (this_->update_interval_ / 1000.f)) {
         auto t = uint32_t(float(process_time) / process_count * (sr / 1000.f));
         auto cpu_util = float(process_time) / 1000 / this_->update_interval_;
-        ESP_LOGE(TAG, "CPU (Core %u) Utilization: %.1f %%", xPortGetCoreID(), cpu_util * 100);
+        ESP_LOGD(TAG, "CPU (Core %u) Utilization: %.1f %%", xPortGetCoreID(), cpu_util * 100);
         process_time = process_count = 0;
       }
     }
