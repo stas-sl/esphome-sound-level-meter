@@ -8,6 +8,9 @@ Typical weekly traffic noise recorded with a microphone located 50m from a mediu
 
 <img width="1187" alt="image" src="https://user-images.githubusercontent.com/4602302/224789124-a86224c9-c11d-4972-a564-b042bab97bcb.png">
 
+
+## Configuration
+
 Add it to your ESPHome config:
 
 ```yaml
@@ -15,15 +18,23 @@ external_components:
   - source: github://stas-sl/esphome-sound-level-meter  # add @tag if you want to use a specific version (e.g @v1.0.0)
 ```
 
-For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml):
+For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml). I would recommend starting from minimal config and if it works and produces reasonable values (30-100 dB SPL), then add more filters/sensors.
 
 ```yaml
 i2s:
-  bck_pin: 23
+  
+  bck_pin: 23                   # also labeled as SCK
   ws_pin: 18
-  din_pin: 19
+  din_pin: 19                   # also labeled as SD
   sample_rate: 48000            # default: 48000
-  bits_per_sample: 32           # default: 32
+
+  # Common settings are bits_per_sample: 16 and bits_shift: 0,
+  # which should work for most microphones. A 16-bit resolution provides
+  # a 96 dB dynamic range, sufficient to cover the dynamic range of most
+  # MEMS microphones.
+  # Alternatively, if your mic supports 24 bit resolution, you can
+  # try bits_per_sample: 32 and bits_shift: 8
+  bits_per_sample: 16           # default: 16
   dma_buf_count: 8              # default: 8
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false
@@ -38,7 +49,7 @@ i2s:
   # for example if mic has 24 bit resolution, and
   # i2s configured as 32 bits, then audio data will be aligned left (MSB)
   # and LSB will be padded with zeros, so you might want to shift them right by 8 bits
-  bits_shift: 8                 # default: 0
+  bits_shift: 0                 # default: 0
 
 sound_level_meter:
   id: sound_level_meter1
@@ -76,136 +87,125 @@ sound_level_meter:
   # additional offset if needed
   offset: 0dB                   # default: empty
 
-  # for flexibility sensors are organized hierarchically into groups. each group
-  # could have any number of filters, sensors and nested groups.
-  # for examples if there is a top level group A with filter A and nested group B
-  # with filter B, then for sensors inside group B filters A and then B will be
-  # applied:
-  # groups:
-  #   # group A
-  #   - filters:
-  #       - filter A
-  #     groups:
-  #       # group B
-  #       - filters:
-  #           - filter B
-  #         sensors:
-  #           - sensor X
-  groups:
-    # group 1 (mic eq)
-    - filters:
-        # for now only SOS filter type is supported, see math/filter-design.ipynb
-        # to learn how to create or convert other filter types to SOS
-        - type: sos
-          coeffs:
-            # INMP441:
-            #      b0            b1           b2          a1            a2
-            - [ 1.0019784 , -1.9908513  , 0.9889158 , -1.9951786  , 0.99518436]
+  # under dsp_filters section you can define multiple filters,
+  # which can be referenced later by each sensor
+  
+  # for now only SOS filter type is supported, see math/filter-design.ipynb
+  # to learn how to create or convert other filter types to SOS
+  dsp_filters:
+    - id: f_inmp441             # INMP441 mic eq @ 48kHz
+      type: sos
+      coeffs:
+        #      b0            b1           b2          a1            a2
+        - [1.0019784, -1.9908513, 0.9889158, -1.9951786, 0.99518436]
+    - id: f_a                   # A weighting @ 48kHz
+      type: sos
+      coeffs:
+        #       b0           b1            b2             a1            a2
+        - [0.16999495, 0.741029, 0.52548885, -0.11321865, -0.056549273]
+        - [1., -2.00027, 1.0002706, -0.03433284, -0.79215795]
+        - [1., -0.709303, -0.29071867, -1.9822421, 0.9822986]
+    - id: f_c                   # C weighting @ 48kHz
+      type: sos
+      coeffs:
+        #       b0             b1             b2             a1             a2
+        - [-0.49651518, -0.12296628, -0.0076134163, -0.37165618, 0.03453208]
+        - [1., 1.3294908, 0.44188643, 1.2312505, 0.37899444]
+        - [1., -2., 1., -1.9946145, 0.9946217]
 
-      # nested groups
-      groups:
-        # group 1.1 (no weighting)
-        - sensors:
-            # 'eq' type sensor calculates Leq (average) sound level over specified period
-            - type: eq
-              name: LZeq_1s
-              id: LZeq_1s
-              # you can override updated_interval specified on top level
-              # individually per each sensor
-              update_interval: 1s
+  sensors:
+    # 'eq' type sensor calculates Leq (average) sound level over specified period
+    - type: eq
+      name: LZeq_1s
+      id: LZeq_1s
+      # you can override updated_interval specified on top level
+      # individually per each sensor
+      update_interval: 1s
 
-            # you can have as many sensors of same type, but with different
-            # other parameters (e.g. update_interval) as needed
-            - type: eq
-              name: LZeq_1min
-              id: LZeq_1min
-              unit_of_measurement: dBZ
+    # you can have as many sensors of same type, but with different
+    # other parameters (e.g. update_interval) as needed
+    - type: eq
+      name: LZeq_1min
+      id: LZeq_1min
+      unit_of_measurement: dBZ
 
-            # 'max' sensor type calculates Lmax with specified window_size.
-            # for example, if update_interval is 60s and window_size is 1s
-            # then it will calculate 60 Leq values for each second of audio data
-            # and the result will be max of them
-            - type: max
-              name: LZmax_1s_1min
-              id: LZmax_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBZ
+    # 'max' sensor type calculates Lmax with specified window_size.
+    # for example, if update_interval is 60s and window_size is 1s
+    # then it will calculate 60 Leq values for each second of audio data
+    # and the result will be max of them
+    - type: max
+      name: LZmax_1s_1min
+      id: LZmax_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBZ
 
-            # same as 'max', but 'min'
-            - type: min
-              name: LZmin_1s_1min
-              id: LZmin_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBZ
+    # same as 'max', but 'min'
+    - type: min
+      name: LZmin_1s_1min
+      id: LZmin_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBZ
 
-            # it finds max single sample over whole update_interval
-            - type: peak
-              name: LZpeak_1min
-              id: LZpeak_1min
-              unit_of_measurement: dBZ
+    # it finds max single sample over whole update_interval
+    - type: peak
+      name: LZpeak_1min
+      id: LZpeak_1min
+      unit_of_measurement: dBZ
 
-        # group 1.2 (A-weighting)
-        - filters:
-            # for now only SOS filter type is supported, see math/filter-design.ipynb
-            # to learn how to create or convert other filter types to SOS
-            - type: sos
-              coeffs:
-                # A-weighting:
-                #       b0           b1            b2             a1            a2
-                - [ 0.16999495 ,  0.741029   ,  0.52548885 , -0.11321865 , -0.056549273]
-                - [ 1.         , -2.00027    ,  1.0002706  , -0.03433284 , -0.79215795 ]
-                - [ 1.         , -0.709303   , -0.29071867 , -1.9822421  ,  0.9822986  ]
-          sensors:
-            - type: eq
-              name: LAeq_1min
-              id: LAeq_1min
-              unit_of_measurement: dBA
-            - type: max
-              name: LAmax_1s_1min
-              id: LAmax_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBA
-            - type: min
-              name: LAmin_1s_1min
-              id: LAmin_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBA
-            - type: peak
-              name: LApeak_1min
-              id: LApeak_1min
-              unit_of_measurement: dBA
+    - type: eq
+      name: LAeq_1min
+      id: LAeq_1min
+      unit_of_measurement: dBA
+      
+      # The dsp_filters field is a list of filter IDs defined
+      # in the main component's corresponding section.
+      # If you're only using a single filter, you can omit the brackets.
+      # Alternatively, instead of referencing an existing filter,
+      # you can define a filter directly here in the same format
+      # as in the main component. However, this filter won't be reusable
+      # across other sensors, so it’s best to use this approach only when
+      # each sensor requires its own unique filters that don't overlap with others.
+      dsp_filters: [f_inmp441, f_a]
+    - type: max
+      name: LAmax_1s_1min
+      id: LAmax_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBA
+      dsp_filters: [f_inmp441, f_a]
+    - type: min
+      name: LAmin_1s_1min
+      id: LAmin_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBA
+      dsp_filters: [f_inmp441, f_a]
+    - type: peak
+      name: LApeak_1min
+      id: LApeak_1min
+      unit_of_measurement: dBA
+      dsp_filters: [f_inmp441, f_a]
 
-        # group 1.3 (C-weighting)
-        - filters:
-            # for now only SOS filter type is supported, see math/filter-design.ipynb
-            # to learn how to create or convert other filter types to SOS
-            - type: sos
-              coeffs:
-                # C-weighting:
-                #       b0             b1             b2             a1             a2
-                - [-0.49651518  , -0.12296628  , -0.0076134163, -0.37165618   , 0.03453208  ]
-                - [ 1.          ,  1.3294908   ,  0.44188643  ,  1.2312505    , 0.37899444  ]
-                - [ 1.          , -2.          ,  1.          , -1.9946145    , 0.9946217   ]
-          sensors:
-            - type: eq
-              name: LCeq_1min
-              id: LCeq_1min
-              unit_of_measurement: dBC
-            - type: max
-              name: LCmax_1s_1min
-              id: LCmax_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBC
-            - type: min
-              name: LCmin_1s_1min
-              id: LCmin_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBC
-            - type: peak
-              name: LCpeak_1min
-              id: LCpeak_1min
-              unit_of_measurement: dBC
-
+    - type: eq
+      name: LCeq_1min
+      id: LCeq_1min
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
+    - type: max
+      name: LCmax_1s_1min
+      id: LCmax_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
+    - type: min
+      name: LCmin_1s_1min
+      id: LCmin_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
+    - type: peak
+      name: LCpeak_1min
+      id: LCpeak_1min
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
 
 # automation
 # available actions:
@@ -253,13 +253,15 @@ Check out [filter-design notebook](math/filter-design.ipynb) to learn how those 
 
 ## 10 bands spectrum analyzer
 
-Although manually specifying IIR/SOS filters might not be the most user-friendly approach, it offers significant flexibility. This method lets you design and apply any filter you need, as long as you know how to tailor it to your requirements. Originally, my intention wasn’t to go beyond standard weighting functions like A/C, but I ended up experimenting with different filters. To showcase its capabilities, I created a 10-band spectrum analyzer using ten 6th-order filters, each targeting a specific frequency band - simply by writing the appropriate configuration file, without needing to modify the component's source code.
+While manually specifying IIR/SOS filters might not be the most user-friendly approach, it offers considerable flexibility. This method lets you use any filter you need, as long as you know how to tailor it to your requirements. Originally, my intention wasn’t to go beyond standard weighting functions like A/C, however to showcase the capabilities, I created a 10-band spectrum analyzer using ten 6th-order filters, each targeting a specific frequency band - simply by writing the appropriate config file, without needing to modify the component's source code.
 
-I set the `update_interval: 100ms` to achieve real-time visualization, displaying the data as sliders using the web server’s number/slider component. While this is probably not the intended use of the sliders and web server, since they may not be designed to handle such frequent updates, it does push the ESP32 to its limits, yet it still works. The sound meter component, with 10 x 6 = 60 SOS filters, uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task, and you'll need to be cautious with it. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
+I set the `update_interval: 100ms` for real-time visualization, displaying the data as sliders using the web server’s number/slider component. While this is probably an abuse of the sliders and web server, since they may not be designed to handle such frequent updates, it does push the ESP32 to its limits, yet it still works. The sound meter component, with 10 x 6 = 60 SOS filters, uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task, and you'll need to be cautious with it. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
 
-While this setup serves as a stress test for real-time updates, you could also use it to monitor different frequency bands over longer time intervals with less frequent updates. Alternatively, you could filter only specific frequencies - you don’t have to use all 10 bands - as you can design your own IIR filters based on your needs.
+While this setup serves as a stress test, you could also use it to monitor different frequency bands over longer time intervals with less frequent updates. Alternatively, you could filter only specific frequencies - you don’t have to use all 10 bands - as you can design your own IIR filters based on your needs.
 
-Here is an example config: [10-bands-spectrum-analyzer-example-config.yaml](configs/10-bands-spectrum-analyzer-example-config.yaml)
+Here is the example config: [10-bands-spectrum-analyzer-example-config.yaml](configs/10-bands-spectrum-analyzer-example-config.yaml)
+
+<img width="1189" src="https://github.com/user-attachments/assets/8a23774d-46f2-4162-8504-4e46bfe50a80">
 
 ## Performance
 

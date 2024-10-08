@@ -39,11 +39,11 @@ i2s:
   bck_pin: 23
   din_pin: 19
   sample_rate: 48000
-  bits_per_sample: 32
+  bits_per_sample: 16
   dma_buf_count: 8
   dma_buf_len: 256
   use_apll: true
-  bits_shift: 8
+  bits_shift: 0
   channel: right
 
 sound_level_meter:

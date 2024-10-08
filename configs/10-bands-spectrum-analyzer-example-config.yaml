@@ -61,14 +61,13 @@ i2s:
   bck_pin: 39
   din_pin: 38
   sample_rate: 48000
-  bits_per_sample: 32
+  bits_per_sample: 16
   dma_buf_count: 8
   dma_buf_len: 256
   use_apll: true
-  bits_shift: 8
+  bits_shift: 0
   channel: right
 
-# yamllint disable rule:line-length
 sound_level_meter:
   id: slm
   is_on: false
@@ -302,7 +301,6 @@ sound_level_meter:
           - number.set:
               id: number_band9
               value: !lambda 'return std::isnan(x) ? 20 : x;'
-# yamllint enable
 
 number:
   - platform: template
