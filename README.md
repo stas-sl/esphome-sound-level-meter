@@ -2,9 +2,10 @@
 
 This component was made to measure environmental noise levels (Leq, Lmin, Lmax, Lpeak) with different frequency weightings over configured time intervals. It is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)).
 
-<img width="488" alt="esphome sound level meter" src="https://github.com/user-attachments/assets/442a9b5d-4607-4d39-945a-9949f19904e0" style="padding: 10px;">
+<img width="488" alt="esphome sound level meter" src="https://github.com/user-attachments/assets/442a9b5d-4607-4d39-945a-9949f19904e0">
 
 Typical weekly traffic noise recorded with a microphone located 50m from a medium traffic road:
+
 <img width="1187" alt="image" src="https://user-images.githubusercontent.com/4602302/224789124-a86224c9-c11d-4972-a564-b042bab97bcb.png">
 
 Add it to your ESPHome config:
@@ -241,16 +242,16 @@ binary_sensor:
       - sound_level_meter.toggle: sound_level_meter1
 ```
 
-### Sending data to sensor.community
+## Sending data to sensor.community
 
 See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
 
 
-### Filter design (math)
+## Filter design (math)
 
 Check out [filter-design notebook](math/filter-design.ipynb) to learn how those SOS coefficients were calculated.
 
-### 10 bands spectrum analyzer
+## 10 bands spectrum analyzer
 
 Although manually specifying IIR/SOS filters might not be the most user-friendly approach, it offers significant flexibility. This method lets you design and apply any filter you need, as long as you know how to tailor it to your requirements. Originally, my intention wasn’t to go beyond standard weighting functions like A/C, but I ended up experimenting with different filters. To showcase its capabilities, I created a 10-band spectrum analyzer using ten 6th-order filters, each targeting a specific frequency band - simply by writing the appropriate configuration file, without needing to modify the component's source code.
 
@@ -260,7 +261,7 @@ While this setup serves as a stress test for real-time updates, you could also u
 
 Here is an example config: [10-bands-spectrum-analyzer.yaml](configs/10-bands-spectrum-analyzer.yaml)
 
-### Performance
+## Performance
 
 In Ivan's project SOS filters are implemented using ESP32 assembler, so they are really fast. A quote from him:
 
@@ -278,13 +279,13 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 | 240MHz   | 6     | 1 Leq                          | 48000       | 1024        | 67 ms               |
 | 240MHz   | 6     | 1 Leq, 1 Lpeak, 1 Lmax, 1 Lmin | 48000       | 1024        | 90 ms               |
 
-### Supported platforms
+## Supported platforms
 
 Tested with ESPHome version 2024.9.0, platforms:
 - [x] ESP32 (Arduino v2.0.6, ESP-IDF v4.4.5)
 - [x] ESP32-IDF (ESP-IDF v4.4.7)
 
-### References
+## References
 
 1. [ESP32-I2S-SLM hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)
 1. [Measuring Audible Noise in Real-Time hackaday.io project](https://hackaday.io/project/162059-street-sense/log/170825-measuring-audible-noise-in-real-time)
