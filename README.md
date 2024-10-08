@@ -259,7 +259,7 @@ I set the `update_interval: 100ms` to achieve real-time visualization, displayin
 
 While this setup serves as a stress test for real-time updates, you could also use it to monitor different frequency bands over longer time intervals with less frequent updates. Alternatively, you could filter only specific frequencies - you don’t have to use all 10 bands - as you can design your own IIR filters based on your needs.
 
-Here is an example config: [10-bands-spectrum-analyzer.yaml](configs/10-bands-spectrum-analyzer.yaml)
+Here is an example config: [10-bands-spectrum-analyzer-example-config.yaml](configs/10-bands-spectrum-analyzer-example-config.yaml)
 
 ## Performance
 
