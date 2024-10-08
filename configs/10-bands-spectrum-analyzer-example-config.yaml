@@ -19,7 +19,8 @@ external_components:
   - source: github://stas-sl/esphome-sound-level-meter
 
 esp32:
-  board: esp32dev
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
   framework:
     type: arduino
 
