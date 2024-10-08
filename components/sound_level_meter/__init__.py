@@ -197,10 +197,6 @@ async def add_sensor(config, parent):
     cg.add(parent.add_sensor(s))
 
 
-def get_max_buffers(config):
-    return max(len(sc[CONF_DSP_FILTERS]) for sc in config[CONF_SENSORS]) + 1
-
-
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
@@ -212,7 +208,6 @@ async def to_code(config):
     cg.add(var.set_task_stack_size(config[CONF_TASK_STACK_SIZE]))
     cg.add(var.set_task_priority(config[CONF_TASK_PRIORITY]))
     cg.add(var.set_task_core(config[CONF_TASK_CORE]))
-    cg.add(var.set_max_buffers(get_max_buffers(config)))
     if CONF_MIC_SENSITIVITY in config:
         cg.add(var.set_mic_sensitivity(config[CONF_MIC_SENSITIVITY]))
     if CONF_MIC_SENSITIVITY_REF in config:

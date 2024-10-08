@@ -34,7 +34,6 @@ class SoundLevelMeter : public Component {
   optional<float> get_mic_sensitivity_ref();
   void set_offset(optional<float> offset);
   optional<float> get_offset();
-  void set_max_buffers(uint8_t max_buffers);
   void add_sensor(SoundLevelMeterSensor *sensor);
   void add_dsp_filter(Filter *dsp_filter);
   virtual void setup() override;
@@ -63,7 +62,6 @@ class SoundLevelMeter : public Component {
   bool is_on_{true};
   std::mutex on_mutex_;
   std::condition_variable on_cv_;
-  uint8_t max_buffers_{1};
 
   void sort_sensors();
   void process(BufferStack<float> &buffers);
@@ -168,7 +166,7 @@ class SOS_Filter : public Filter {
 
 template<typename T> class BufferStack {
  public:
-  BufferStack(uint32_t buffer_size, uint32_t buffer_count);
+  BufferStack(uint32_t buffer_size);
   std::vector<T> &current();
   void push();
   void pop();

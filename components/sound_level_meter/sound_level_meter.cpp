@@ -32,7 +32,6 @@ void SoundLevelMeter::set_mic_sensitivity_ref(optional<float> mic_sensitivity_re
 optional<float> SoundLevelMeter::get_mic_sensitivity_ref() { return this->mic_sensitivity_ref_; }
 void SoundLevelMeter::set_offset(optional<float> offset) { this->offset_ = offset; }
 optional<float> SoundLevelMeter::get_offset() { return this->offset_; }
-void SoundLevelMeter::set_max_buffers(uint8_t max_buffers) { this->max_buffers_ = max_buffers; }
 void SoundLevelMeter::add_sensor(SoundLevelMeterSensor *sensor) { this->sensors_.push_back(sensor); }
 void SoundLevelMeter::add_dsp_filter(Filter *dsp_filter) { this->dsp_filters_.push_back(dsp_filter); }
 
@@ -91,7 +90,7 @@ bool SoundLevelMeter::is_on() { return this->is_on_; }
 
 void SoundLevelMeter::task(void *param) {
   SoundLevelMeter *this_ = reinterpret_cast<SoundLevelMeter *>(param);
-  BufferStack<float> buffers(this_->buffer_size_, this_->max_buffers_);
+  BufferStack<float> buffers(this_->buffer_size_);
 
   auto warmup_start = millis();
   while (millis() - warmup_start < this_->warmup_interval_)
@@ -124,8 +123,9 @@ void SoundLevelMeter::task(void *param) {
   }
 }
 
-// sorting sensors in such a way that sensors with same filters (or prefix) come
-// near each other
+// Arranging sensors in a sorted order so that those with the same
+// filters (or prefix) appear consecutively. This enables more efficient
+// computations by applying filters only once for each common prefix of filters
 void SoundLevelMeter::sort_sensors() {
   std::sort(this->sensors_.begin(), this->sensors_.end(), [](SoundLevelMeterSensor *a, SoundLevelMeterSensor *b) {
     return std::lexicographical_compare(a->dsp_filters_.begin(), a->dsp_filters_.end(), b->dsp_filters_.begin(),
@@ -137,17 +137,22 @@ void SoundLevelMeter::process(BufferStack<float> &buffers) {
   std::vector<Filter *> prefix;
   for (auto s : this->sensors_) {
     int i = 0, n = s->dsp_filters_.size(), m = prefix.size();
-    for (; i < n && i < m && s->dsp_filters_[i] == prefix[i]; i++)
-      ;
+    // finding common prefx
+    while (i < n && i < m && s->dsp_filters_[i] == prefix[i])
+      i++;
+
+    // discard applied filters beyond common prefix (if any)
     while (prefix.size() > i) {
       prefix.pop_back();
       buffers.pop();
     }
+
+    // apply new filters from current sensor on top of common prefix
     for (; i < s->dsp_filters_.size(); i++) {
       auto f = s->dsp_filters_[i];
-      prefix.push_back(f);
       buffers.push();
       f->process(buffers);
+      prefix.push_back(f);
     }
     s->process(buffers);
   }
@@ -355,21 +360,25 @@ void SOS_Filter::reset() {
 /* BufferStack */
 
 template<typename T>
-BufferStack<T>::BufferStack(uint32_t buffer_size, uint32_t max_depth)
-    : buffer_size_(buffer_size), max_depth_(max_depth) {
-  this->buffers_.resize(max_depth);
+BufferStack<T>::BufferStack(uint32_t buffer_size)
+    : buffer_size_(buffer_size) {
+  this->buffers_.resize(1);
   this->buffers_[0].resize(buffer_size);
 }
 
 template<typename T> std::vector<T> &BufferStack<T>::current() { return this->buffers_[this->index_]; }
 
 template<typename T> void BufferStack<T>::push() {
-  assert(this->index_ < this->max_depth_ - 1 && "Index out of bounds");
   this->index_++;
+  if (this->index_ == this->buffers_.capacity()) {
+    this->buffers_.reserve(this->index_ + 1);
+    this->buffers_.resize(this->index_ + 1);
+  }
   auto &dst = this->buffers_[this->index_];
   auto &src = this->buffers_[this->index_ - 1];
   auto n = src.size();
   dst.resize(n);
+  // this is faster than assigning one vector to another, which results in element-wise copying
   memcpy(&dst[0], &src[0], n * sizeof(T));
 }
 
