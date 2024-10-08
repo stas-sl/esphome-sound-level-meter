@@ -359,9 +359,7 @@ void SOS_Filter::reset() {
 
 /* BufferStack */
 
-template<typename T>
-BufferStack<T>::BufferStack(uint32_t buffer_size)
-    : buffer_size_(buffer_size) {
+template<typename T> BufferStack<T>::BufferStack(uint32_t buffer_size) : buffer_size_(buffer_size) {
   this->buffers_.resize(1);
   this->buffers_[0].resize(buffer_size);
 }
