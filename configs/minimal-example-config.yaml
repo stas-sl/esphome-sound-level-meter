@@ -1,6 +1,8 @@
 ---
 esphome:
   name: sound-level-meter
+  platformio_options:
+    board_build.f_cpu: 240000000
 
 external_components:
   - source: github://stas-sl/esphome-sound-level-meter

@@ -261,26 +261,29 @@ binary_sensor:
       - sound_level_meter.toggle: sound_level_meter1
 ```
 
-## Sending data to sensor.community
+## 10 bands spectrum analyzer
 
-See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
+Config: [10-bands-spectrum-analyzer-example-config.yaml](configs/10-bands-spectrum-analyzer-example-config.yaml)
 
+While manually specifying IIR/SOS filters might not be the most user-friendly approach, it offers considerable flexibility. This method allows you to use any filter you need, provided you know how to customize it to meet your requirements. Originally, my intention wasn’t to go beyond standard weighting functions like A/C, however to showcase the capabilities, I created a 10-band spectrum analyzer using ten 6th-order band-pass filters, each targeting a specific frequency band - simply by writing the appropriate config file, without needing to modify the component's source code.
+
+For real-time visualization, I'm using web server number/slider controls to display the levels of each of the 10 bands. While this might not be the intended use of the sliders and web server - since they may not be designed for such frequent updates and it pushes the ESP32 to its limits, but it works 🤪
+
+With 10 x 6 = 60 SOS filters, the component uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
+
+https://github.com/user-attachments/assets/91cd7d5c-e636-4d90-b046-68bd33df8db2
+
+While this example serves as a stress test, you could also use it to monitor different frequencies over longer time intervals with less frequent updates.
+
+<img width="1189" src="https://github.com/user-attachments/assets/8a23774d-46f2-4162-8504-4e46bfe50a80">
 
 ## Filter design (math)
 
 Check out [filter-design notebook](math/filter-design.ipynb) to learn how those SOS coefficients were calculated.
 
-## 10 bands spectrum analyzer
+## Sending data to sensor.community
 
-While manually specifying IIR/SOS filters might not be the most user-friendly approach, it offers considerable flexibility. This method lets you use any filter you need, as long as you know how to tailor it to your requirements. Originally, my intention wasn’t to go beyond standard weighting functions like A/C, however to showcase the capabilities, I created a 10-band spectrum analyzer using ten 6th-order filters, each targeting a specific frequency band - simply by writing the appropriate config file, without needing to modify the component's source code.
-
-I set the `update_interval: 100ms` for real-time visualization, displaying the data as sliders using the web server’s number/slider component. While this is probably an abuse of the sliders and web server, since they may not be designed to handle such frequent updates, it does push the ESP32 to its limits, yet it still works. The sound meter component, with 10 x 6 = 60 SOS filters, uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task, and you'll need to be cautious with it. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
-
-While this setup serves as a stress test, you could also use it to monitor different frequency bands over longer time intervals with less frequent updates. Alternatively, you could filter only specific frequencies - you don’t have to use all 10 bands - as you can design your own IIR filters based on your needs.
-
-Here is the example config: [10-bands-spectrum-analyzer-example-config.yaml](configs/10-bands-spectrum-analyzer-example-config.yaml)
-
-<img width="1189" src="https://github.com/user-attachments/assets/8a23774d-46f2-4162-8504-4e46bfe50a80">
+See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
 
 ## Performance
 
