@@ -18,11 +18,10 @@ external_components:
   - source: github://stas-sl/esphome-sound-level-meter  # add @tag if you want to use a specific version (e.g @v1.0.0)
 ```
 
-For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml). I would recommend starting from minimal config and if it works and produces reasonable values (30-100 dB SPL), then add more filters/sensors.
+For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml). I would recommend to start from minimal config, and if it works and produces reasonable values (30-100 dB SPL), then add more filters/sensors.
 
 ```yaml
 i2s:
-  
   bck_pin: 23                   # also labeled as SCK
   ws_pin: 18
   din_pin: 19                   # also labeled as SD
@@ -82,6 +81,8 @@ sound_level_meter:
 
   # see your mic datasheet to find sensitivity and reference SPL.
   # those are used to convert dB FS to db SPL
+
+  # if omitted, the reported values will be in dB FS units
   mic_sensitivity: -26dB        # default: empty
   mic_sensitivity_ref: 94dB     # default: empty
   # additional offset if needed
@@ -92,27 +93,30 @@ sound_level_meter:
   
   # for now only SOS filter type is supported, see math/filter-design.ipynb
   # to learn how to create or convert other filter types to SOS
+
+  # note, that those coefficients are only applicable for
+  # specific sample rate (48 kHz), if you will use
+  # other value, then you need to update these coefficicients
   dsp_filters:
     - id: f_inmp441             # INMP441 mic eq @ 48kHz
       type: sos
       coeffs:
-        #      b0            b1           b2          a1            a2
-        - [1.0019784, -1.9908513, 0.9889158, -1.9951786, 0.99518436]
+        #       b0          b1          b2          a1          a2          
+        - [ 1.0019784 , -1.9908513, 0.9889158 , -1.9951786, 0.99518436 ]
     - id: f_a                   # A weighting @ 48kHz
       type: sos
       coeffs:
-        #       b0           b1            b2             a1            a2
-        - [0.16999495, 0.741029, 0.52548885, -0.11321865, -0.056549273]
-        - [1., -2.00027, 1.0002706, -0.03433284, -0.79215795]
-        - [1., -0.709303, -0.29071867, -1.9822421, 0.9822986]
+        #        b0            b1            b2            a1            a2            
+        - [ 0.16999495  , 0.741029    , 0.52548885  , -0.11321865 , -0.056549273 ]
+        - [ 1.          , -2.00027    , 1.0002706   , -0.03433284 , -0.79215795  ]
+        - [ 1.          , -0.709303   , -0.29071867 , -1.9822421  , 0.9822986    ]
     - id: f_c                   # C weighting @ 48kHz
       type: sos
       coeffs:
-        #       b0             b1             b2             a1             a2
-        - [-0.49651518, -0.12296628, -0.0076134163, -0.37165618, 0.03453208]
-        - [1., 1.3294908, 0.44188643, 1.2312505, 0.37899444]
-        - [1., -2., 1., -1.9946145, 0.9946217]
-
+        #        b0             b1             b2             a1             a2             
+        - [ -0.49651518  , -0.12296628  , -0.0076134163, -0.37165618  , 0.03453208    ]
+        - [ 1.           , 1.3294908    , 0.44188643   , 1.2312505    , 0.37899444    ]
+        - [ 1.           , -2.          , 1.           , -1.9946145   , 0.9946217     ]
   sensors:
     # 'eq' type sensor calculates Leq (average) sound level over specified period
     - type: eq
@@ -122,12 +126,25 @@ sound_level_meter:
       # individually per each sensor
       update_interval: 1s
 
+      # The dsp_filters field is a list of filter IDs defined
+      # in the main component's corresponding section.
+      # If you're only using a single filter, you can omit the brackets.
+      # Alternatively, instead of referencing an existing filter,
+      # you can define a filter directly here in the same format
+      # as in the main component. However, this filter won't be reusable
+      # across other sensors, so it’s best to use this approach only when
+      # each sensor requires its own unique filters that don't overlap with others.
+      dsp_filters: [f_inmp441]
+
     # you can have as many sensors of same type, but with different
     # other parameters (e.g. update_interval) as needed
     - type: eq
       name: LZeq_1min
       id: LZeq_1min
       unit_of_measurement: dBZ
+      # another syntax for specifying a list
+      dsp_filters: 
+        - f_inmp441
 
     # 'max' sensor type calculates Lmax with specified window_size.
     # for example, if update_interval is 60s and window_size is 1s
@@ -138,6 +155,8 @@ sound_level_meter:
       id: LZmax_1s_1min
       window_size: 1s
       unit_of_measurement: dBZ
+      # you can omit brackets, if there is only single element
+      dsp_filters: f_inmp441
 
     # same as 'max', but 'min'
     - type: min
@@ -145,6 +164,15 @@ sound_level_meter:
       id: LZmin_1s_1min
       window_size: 1s
       unit_of_measurement: dBZ
+      # it is also possible to define filter right in place, 
+      # though it would be considered as a different filter even
+      # if it has the same coeffiecients as other defined filters, 
+      # so previous calculations could not be reused, there
+      dsp_filters:
+        - type: sos
+          coeffs:
+            #       b0          b1          b2          a1          a2          
+            - [ 1.0019784 , -1.9908513, 0.9889158 , -1.9951786, 0.99518436 ]
 
     # it finds max single sample over whole update_interval
     - type: peak
@@ -156,15 +184,6 @@ sound_level_meter:
       name: LAeq_1min
       id: LAeq_1min
       unit_of_measurement: dBA
-      
-      # The dsp_filters field is a list of filter IDs defined
-      # in the main component's corresponding section.
-      # If you're only using a single filter, you can omit the brackets.
-      # Alternatively, instead of referencing an existing filter,
-      # you can define a filter directly here in the same format
-      # as in the main component. However, this filter won't be reusable
-      # across other sensors, so it’s best to use this approach only when
-      # each sensor requires its own unique filters that don't overlap with others.
       dsp_filters: [f_inmp441, f_a]
     - type: max
       name: LAmax_1s_1min
@@ -286,6 +305,10 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 Tested with ESPHome version 2024.9.0, platforms:
 - [x] ESP32 (Arduino v2.0.6, ESP-IDF v4.4.5)
 - [x] ESP32-IDF (ESP-IDF v4.4.7)
+
+## Troubleshooting
+
+
 
 ## References
 
