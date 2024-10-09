@@ -40,7 +40,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_DIN_PIN): pins.internal_gpio_input_pin_schema,
             cv.Optional(CONF_DOUT_PIN): pins.internal_gpio_output_pin_schema,
             cv.Optional(CONF_SAMPLE_RATE, 48000): cv.positive_not_null_int,
-            cv.Optional(CONF_BITS_PER_SAMPLE, 32): cv.one_of(8, 16, 24, 32, int=True),
+            cv.Optional(CONF_BITS_PER_SAMPLE, 16): cv.one_of(8, 16, 24, 32, int=True),
             cv.Optional(CONF_DMA_BUF_COUNT, 8): cv.positive_not_null_int,
             cv.Optional(CONF_DMA_BUF_LEN, 256): cv.positive_not_null_int,
             cv.Optional(CONF_USE_APLL, False): cv.boolean,

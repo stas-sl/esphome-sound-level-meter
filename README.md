@@ -2,10 +2,14 @@
 
 This component was made to measure environmental noise levels (Leq, Lmin, Lmax, Lpeak) with different frequency weightings over configured time intervals. It is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)).
 
-<img width="497" alt="image" src="https://user-images.githubusercontent.com/4602302/220765417-b72447e6-fa94-4d92-84e9-0502fa6743c1.png">
+<img width="488" alt="esphome sound level meter" src="https://github.com/user-attachments/assets/442a9b5d-4607-4d39-945a-9949f19904e0">
 
 Typical weekly traffic noise recorded with a microphone located 50m from a medium traffic road:
+
 <img width="1187" alt="image" src="https://user-images.githubusercontent.com/4602302/224789124-a86224c9-c11d-4972-a564-b042bab97bcb.png">
+
+
+## Configuration
 
 Add it to your ESPHome config:
 
@@ -14,30 +18,37 @@ external_components:
   - source: github://stas-sl/esphome-sound-level-meter  # add @tag if you want to use a specific version (e.g @v1.0.0)
 ```
 
-For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml):
+For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml). I would recommend to start from minimal config, and if it works and produces reasonable values (30-100 dB SPL), then add more filters/sensors.
 
 ```yaml
 i2s:
-  bck_pin: 23
+  bck_pin: 23                   # also labeled as SCK
   ws_pin: 18
-  din_pin: 19
+  din_pin: 19                   # also labeled as SD
   sample_rate: 48000            # default: 48000
-  bits_per_sample: 32           # default: 32
+
+  # Common settings are bits_per_sample: 16 and bits_shift: 0,
+  # which should work for most microphones. A 16-bit resolution provides
+  # a 96 dB dynamic range, sufficient to cover the dynamic range of most
+  # MEMS microphones.
+  # Alternatively, if your mic supports 24 bit resolution, you can
+  # try bits_per_sample: 32 and bits_shift: 8
+  bits_per_sample: 16           # default: 16
   dma_buf_count: 8              # default: 8
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false
 
   # according to datasheet when L/R pin is connected to GND,
   # the mic should output its signal in the left channel,
-  # however in my experience it's the opposite: when I connect
-  # L/R to GND then the signal is in the right channel
+  # but on some boards I've encountered the opposite, 
+  # so you can try both
   channel: right                # default: right
 
   # right shift samples.
   # for example if mic has 24 bit resolution, and
   # i2s configured as 32 bits, then audio data will be aligned left (MSB)
   # and LSB will be padded with zeros, so you might want to shift them right by 8 bits
-  bits_shift: 8                 # default: 0
+  bits_shift: 0                 # default: 0
 
 sound_level_meter:
   id: sound_level_meter1
@@ -70,141 +81,150 @@ sound_level_meter:
 
   # see your mic datasheet to find sensitivity and reference SPL.
   # those are used to convert dB FS to db SPL
+
+  # if omitted, the reported values will be in dB FS units
   mic_sensitivity: -26dB        # default: empty
   mic_sensitivity_ref: 94dB     # default: empty
   # additional offset if needed
   offset: 0dB                   # default: empty
 
-  # for flexibility sensors are organized hierarchically into groups. each group
-  # could have any number of filters, sensors and nested groups.
-  # for examples if there is a top level group A with filter A and nested group B
-  # with filter B, then for sensors inside group B filters A and then B will be
-  # applied:
-  # groups:
-  #   # group A
-  #   - filters:
-  #       - filter A
-  #     groups:
-  #       # group B
-  #       - filters:
-  #           - filter B
-  #         sensors:
-  #           - sensor X
-  groups:
-    # group 1 (mic eq)
-    - filters:
-        # for now only SOS filter type is supported, see math/filter-design.ipynb
-        # to learn how to create or convert other filter types to SOS
+  # under dsp_filters section you can define multiple filters,
+  # which can be referenced later by each sensor
+  
+  # for now only SOS filter type is supported, see math/filter-design.ipynb
+  # to learn how to create or convert other filter types to SOS
+
+  # note, that those coefficients are only applicable for
+  # specific sample rate (48 kHz), if you will use
+  # other value, then you need to update these coefficicients
+  dsp_filters:
+    - id: f_inmp441             # INMP441 mic eq @ 48kHz
+      type: sos
+      coeffs:
+        #       b0          b1          b2          a1          a2          
+        - [ 1.0019784 , -1.9908513, 0.9889158 , -1.9951786, 0.99518436 ]
+    - id: f_a                   # A weighting @ 48kHz
+      type: sos
+      coeffs:
+        #        b0            b1            b2            a1            a2            
+        - [ 0.16999495  , 0.741029    , 0.52548885  , -0.11321865 , -0.056549273 ]
+        - [ 1.          , -2.00027    , 1.0002706   , -0.03433284 , -0.79215795  ]
+        - [ 1.          , -0.709303   , -0.29071867 , -1.9822421  , 0.9822986    ]
+    - id: f_c                   # C weighting @ 48kHz
+      type: sos
+      coeffs:
+        #        b0             b1             b2             a1             a2             
+        - [ -0.49651518  , -0.12296628  , -0.0076134163, -0.37165618  , 0.03453208    ]
+        - [ 1.           , 1.3294908    , 0.44188643   , 1.2312505    , 0.37899444    ]
+        - [ 1.           , -2.          , 1.           , -1.9946145   , 0.9946217     ]
+  sensors:
+    # 'eq' type sensor calculates Leq (average) sound level over specified period
+    - type: eq
+      name: LZeq_1s
+      id: LZeq_1s
+      # you can override updated_interval specified on top level
+      # individually per each sensor
+      update_interval: 1s
+
+      # The dsp_filters field is a list of filter IDs defined
+      # in the main component's corresponding section.
+      # If you're only using a single filter, you can omit the brackets.
+      # Alternatively, instead of referencing an existing filter,
+      # you can define a filter directly here in the same format
+      # as in the main component. However, this filter won't be reusable
+      # across other sensors, so it’s best to use this approach only when
+      # each sensor requires its own unique filters that don't overlap with others.
+      dsp_filters: [f_inmp441]
+
+    # you can have as many sensors of same type, but with different
+    # other parameters (e.g. update_interval) as needed
+    - type: eq
+      name: LZeq_1min
+      id: LZeq_1min
+      unit_of_measurement: dBZ
+      # another syntax for specifying a list
+      dsp_filters: 
+        - f_inmp441
+
+    # 'max' sensor type calculates Lmax with specified window_size.
+    # for example, if update_interval is 60s and window_size is 1s
+    # then it will calculate 60 Leq values for each second of audio data
+    # and the result will be max of them
+    - type: max
+      name: LZmax_1s_1min
+      id: LZmax_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBZ
+      # you can omit brackets, if there is only single element
+      dsp_filters: f_inmp441
+
+    # same as 'max', but 'min'
+    - type: min
+      name: LZmin_1s_1min
+      id: LZmin_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBZ
+      # it is also possible to define filter right in place, 
+      # though it would be considered as a different filter even
+      # if it has the same coeffiecients as other defined filters, 
+      # so previous calculations could not be reused, there
+      dsp_filters:
         - type: sos
           coeffs:
-            # INMP441:
-            #      b0            b1           b2          a1            a2
-            - [ 1.0019784 , -1.9908513  , 0.9889158 , -1.9951786  , 0.99518436]
+            #       b0          b1          b2          a1          a2          
+            - [ 1.0019784 , -1.9908513, 0.9889158 , -1.9951786, 0.99518436 ]
 
-      # nested groups
-      groups:
-        # group 1.1 (no weighting)
-        - sensors:
-            # 'eq' type sensor calculates Leq (average) sound level over specified period
-            - type: eq
-              name: LZeq_1s
-              id: LZeq_1s
-              # you can override updated_interval specified on top level
-              # individually per each sensor
-              update_interval: 1s
+    # it finds max single sample over whole update_interval
+    - type: peak
+      name: LZpeak_1min
+      id: LZpeak_1min
+      unit_of_measurement: dBZ
 
-            # you can have as many sensors of same type, but with different
-            # other parameters (e.g. update_interval) as needed
-            - type: eq
-              name: LZeq_1min
-              id: LZeq_1min
-              unit_of_measurement: dBZ
+    - type: eq
+      name: LAeq_1min
+      id: LAeq_1min
+      unit_of_measurement: dBA
+      dsp_filters: [f_inmp441, f_a]
+    - type: max
+      name: LAmax_1s_1min
+      id: LAmax_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBA
+      dsp_filters: [f_inmp441, f_a]
+    - type: min
+      name: LAmin_1s_1min
+      id: LAmin_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBA
+      dsp_filters: [f_inmp441, f_a]
+    - type: peak
+      name: LApeak_1min
+      id: LApeak_1min
+      unit_of_measurement: dBA
+      dsp_filters: [f_inmp441, f_a]
 
-            # 'max' sensor type calculates Lmax with specified window_size.
-            # for example, if update_interval is 60s and window_size is 1s
-            # then it will calculate 60 Leq values for each second of audio data
-            # and the result will be max of them
-            - type: max
-              name: LZmax_1s_1min
-              id: LZmax_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBZ
-
-            # same as 'max', but 'min'
-            - type: min
-              name: LZmin_1s_1min
-              id: LZmin_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBZ
-
-            # it finds max single sample over whole update_interval
-            - type: peak
-              name: LZpeak_1min
-              id: LZpeak_1min
-              unit_of_measurement: dBZ
-
-        # group 1.2 (A-weighting)
-        - filters:
-            # for now only SOS filter type is supported, see math/filter-design.ipynb
-            # to learn how to create or convert other filter types to SOS
-            - type: sos
-              coeffs:
-                # A-weighting:
-                #       b0           b1            b2             a1            a2
-                - [ 0.16999495 ,  0.741029   ,  0.52548885 , -0.11321865 , -0.056549273]
-                - [ 1.         , -2.00027    ,  1.0002706  , -0.03433284 , -0.79215795 ]
-                - [ 1.         , -0.709303   , -0.29071867 , -1.9822421  ,  0.9822986  ]
-          sensors:
-            - type: eq
-              name: LAeq_1min
-              id: LAeq_1min
-              unit_of_measurement: dBA
-            - type: max
-              name: LAmax_1s_1min
-              id: LAmax_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBA
-            - type: min
-              name: LAmin_1s_1min
-              id: LAmin_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBA
-            - type: peak
-              name: LApeak_1min
-              id: LApeak_1min
-              unit_of_measurement: dBA
-
-        # group 1.3 (C-weighting)
-        - filters:
-            # for now only SOS filter type is supported, see math/filter-design.ipynb
-            # to learn how to create or convert other filter types to SOS
-            - type: sos
-              coeffs:
-                # C-weighting:
-                #       b0             b1             b2             a1             a2
-                - [-0.49651518  , -0.12296628  , -0.0076134163, -0.37165618   , 0.03453208  ]
-                - [ 1.          ,  1.3294908   ,  0.44188643  ,  1.2312505    , 0.37899444  ]
-                - [ 1.          , -2.          ,  1.          , -1.9946145    , 0.9946217   ]
-          sensors:
-            - type: eq
-              name: LCeq_1min
-              id: LCeq_1min
-              unit_of_measurement: dBC
-            - type: max
-              name: LCmax_1s_1min
-              id: LCmax_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBC
-            - type: min
-              name: LCmin_1s_1min
-              id: LCmin_1s_1min
-              window_size: 1s
-              unit_of_measurement: dBC
-            - type: peak
-              name: LCpeak_1min
-              id: LCpeak_1min
-              unit_of_measurement: dBC
-
+    - type: eq
+      name: LCeq_1min
+      id: LCeq_1min
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
+    - type: max
+      name: LCmax_1s_1min
+      id: LCmax_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
+    - type: min
+      name: LCmin_1s_1min
+      id: LCmin_1s_1min
+      window_size: 1s
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
+    - type: peak
+      name: LCpeak_1min
+      id: LCpeak_1min
+      unit_of_measurement: dBC
+      dsp_filters: [f_inmp441, f_c]
 
 # automation
 # available actions:
@@ -214,6 +234,7 @@ sound_level_meter:
 switch:
   - platform: template
     name: "Sound Level Meter Switch"
+    icon: mdi:power
     # if you want is_on property on component to have effect, then set
     # restore_mode to DISABLED, or alternatively you can use other modes
     # (more on them in esphome docs), then is_on property on the component will
@@ -240,11 +261,31 @@ binary_sensor:
       - sound_level_meter.toggle: sound_level_meter1
 ```
 
-### Filter design (math)
+## 10 bands spectrum analyzer
+
+[10-bands-spectrum-analyzer-example-config.yaml](configs/10-bands-spectrum-analyzer-example-config.yaml)
+
+While manually specifying IIR/SOS filters might not be the most user-friendly approach, it offers great flexibility. This method allows you to use any filter you need, provided you know how to customize it to meet your requirements. Originally, my intention wasn’t to go beyond standard weighting functions like A/C, however to showcase the capabilities, I created a 10-band spectrum analyzer using ten 6th-order band-pass filters, each targeting a specific frequency band - simply by writing the appropriate config file, without needing to modify the component's source code.
+
+For real-time visualization, I'm using web server number/slider controls to display the levels of each of the 10 bands. While this might not be the intended use of the sliders and web server - since they may not be designed for such frequent updates and it pushes the ESP32 to its limits, but it works 🤪
+
+With 10 x 6 = 60 SOS filters, the component uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
+
+https://github.com/user-attachments/assets/91cd7d5c-e636-4d90-b046-68bd33df8db2
+
+While this example serves as a stress test, you could also use it to monitor different frequencies over longer time intervals with less frequent updates.
+
+<img width="1189" src="https://github.com/user-attachments/assets/8a23774d-46f2-4162-8504-4e46bfe50a80">
+
+## Filter design (math)
 
 Check out [filter-design notebook](math/filter-design.ipynb) to learn how those SOS coefficients were calculated.
 
-### Performance
+## Sending data to sensor.community
+
+See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
+
+## Performance
 
 In Ivan's project SOS filters are implemented using ESP32 assembler, so they are really fast. A quote from him:
 
@@ -262,17 +303,35 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 | 240MHz   | 6     | 1 Leq                          | 48000       | 1024        | 67 ms               |
 | 240MHz   | 6     | 1 Leq, 1 Lpeak, 1 Lmax, 1 Lmin | 48000       | 1024        | 90 ms               |
 
-### Supported platforms
+## Supported platforms
 
 Tested with ESPHome version 2024.9.0, platforms:
 - [x] ESP32 (Arduino v2.0.6, ESP-IDF v4.4.5)
 - [x] ESP32-IDF (ESP-IDF v4.4.7)
 
-### Sending data to sensor.community
+## Troubleshooting
 
-See [sensor-community-example-config.yaml](configs/sensor-community-example-config.yaml)
+Setting up I2S microphones, including correct wiring, identifying the right pins, and finding the correct setting values, can be tricky and frustrating, especially if you're doing it for the first time (and even if you're not). With numerous different boards and microphones, each with its own peculiarities, it can be a challenge. Below, I’ll summarize the best advice for troubleshooting if things don't work on the first attempt.
 
-### References
+1. Double check your wires. I believe this is the most frequent source of mistakes. Try connecting L/R to GND or to VCC; or alternatively specify left or right channel in i2s configuration. Try different PINS, as some different boards might use some PINS for other purposes.
+
+2. If you are receiving `-inf` values, it indicates that the input data consists entirely of zeros. This typically means you either have incorrect wiring or an incorrect PIN assignment in your i2s config.
+
+3. I would recommend starting from [minimal-example-config.yaml](configs/minimal-example-config.yaml) and ensuring that it produces values in reasonable range (30-100 dB SPL) and it reacts accordingly if you clap or produce louder noises, before proceeding further.
+
+4. Most microphones should work with `sample_rate: 16` and `bits_shift: 0`, but you can try other settings like `sample_rate: 32` and `bits_shift: 8` for 24 bits microphones.
+
+5. I tested it only on ESP32/ESP32 S3, that have 2 CPU cores, so not sure how it will work on other chips.
+
+6. If you are experiencing performance issues, set logger level to `DEBUG` and the component will print CPU utilization, which shouldn't be higher than 80%. 
+
+7. If you've set up everything correctly, then in a quite room the lowest LAeq levels should correspond to the noise floor levels from your mic specification. For example for INMP441 it should be ~33 dBA +/- few dBs. Don't confuse this with dBZ levels, which do not have A-weighting applied and can therefore be 5-15 dB higher.
+
+8. Sometimes, even in complete silence, LAeq values may not reach the noise floor level. This can indicate the presence of other noises caused by electromagnetic or RF interference, which may be due to the WiFi module, a poor power supply, long wires, etc. For instance, on one board, I couldn’t achieve lower than 40-45 dBA until I reduced the WiFi power by setting `output_power: 8.5 dB` in config, after which I immediately obtained the expected 33 dBA.
+
+9. If none of the above helps, debugging may become more challenging. I personally spent plenty of hours troubleshooting I2S issues by writing specific sketches to print audio data or to record it for playback and analysis on my PC. Another option might be to try native ESPHome's i2s_audio/microphone components to ensure that your board/microphone can work together and then use those settings that worked whith this component. Or maybe even try some other examples/projects that work with i2s audio.
+
+## References
 
 1. [ESP32-I2S-SLM hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)
 1. [Measuring Audible Noise in Real-Time hackaday.io project](https://hackaday.io/project/162059-street-sense/log/170825-measuring-audible-noise-in-real-time)
