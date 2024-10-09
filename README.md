@@ -311,7 +311,25 @@ Tested with ESPHome version 2024.9.0, platforms:
 
 ## Troubleshooting
 
+Setting up I2S microphones, including correct wiring, identifying the right pins, and finding the correct setting values, can be tricky and frustrating, especially if you're doing it for the first time (and even if you're not). With numerous different boards and microphones, each with its own peculiarities, it can be a challenge. Below, I’ll summarize the best advice for troubleshooting if things don't work on the first attempt.
 
+1. Double check your wires. I believe this is the most frequent source of mistakes. Try connecting L/R to GND or to VCC; or alternatively specify left or right channel in i2s configuration. Try different PINS, as some different boards might use some PINS for other purposes.
+
+2. If you are receiving `-inf` values, it indicates that the input data consists entirely of zeros. This typically means you either have incorrect wiring or an incorrect PIN assignment in your i2s config.
+
+3. I would recommend starting from [minimal-example-config.yaml](configs/minimal-example-config.yaml) and ensuring that it produces values in reasonable range (30-100 dB SPL) and it reacts accordingly if you clap or produce louder noises, before proceeding further.
+
+4. Most microphones should work with `sample_rate: 16` and `bits_shift: 0`, but you can try other settings like `sample_rate: 32` and `bits_shift: 8` for 24 bits microphones.
+
+5. I tested it only on ESP32/ESP32 S3, that have 2 CPU cores, so not sure how it will work on other chips.
+
+6. If you are experiencing performance issues, set logger level to `DEBUG` and the component will print CPU utilization, which shouldn't be higher than 80%. 
+
+7. If you've set up everything correctly, then in a quite room the lowest LAeq levels should correspond to the noise floor levels from your mic specification. For example for INMP441 it should be ~33 dBA +/- few dBs. Don't confuse this with dBZ levels, which do not have A-weighting applied and can therefore be 5-15 dB higher.
+
+8. Sometimes, even in complete silence, LAeq values may not reach the noise floor level. This can indicate the presence of other noises caused by electromagnetic or RF interference, which may be due to the WiFi module, a poor power supply, long wires, etc. For instance, on one board, I couldn’t achieve lower than 40-45 dBA until I reduced the WiFi power by setting `output_power: 8.5 dB` in config, after which I immediately obtained the expected 33 dBA.
+
+9. If none of the above helps, debugging may become more challenging. I personally spent plenty of hours troubleshooting I2S issues by writing specific sketches to print audio data or to record it for playback and analysis on my PC. Another option might be to try native ESPHome's i2s_audio/microphone components to ensure that your board/microphone can work together and then use those settings that worked whith this component. Or maybe even try some other examples/projects that work with i2s audio.
 
 ## References
 
