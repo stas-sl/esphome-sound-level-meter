@@ -32,6 +32,7 @@ void SoundLevelMeter::set_mic_sensitivity_ref(optional<float> mic_sensitivity_re
 optional<float> SoundLevelMeter::get_mic_sensitivity_ref() { return this->mic_sensitivity_ref_; }
 void SoundLevelMeter::set_offset(optional<float> offset) { this->offset_ = offset; }
 optional<float> SoundLevelMeter::get_offset() { return this->offset_; }
+void SoundLevelMeter::set_is_high_freq(bool is_high_freq) { this->is_high_freq_ = is_high_freq; }
 void SoundLevelMeter::add_sensor(SoundLevelMeterSensor *sensor) { this->sensors_.push_back(sensor); }
 void SoundLevelMeter::add_dsp_filter(Filter *dsp_filter) { this->dsp_filters_.push_back(dsp_filter); }
 
@@ -59,7 +60,7 @@ void SoundLevelMeter::loop() {
   if (!this->defer_queue_.empty()) {
     auto &f = this->defer_queue_.front();
     f();
-    this->defer_queue_.pop();
+    this->defer_queue_.pop_front();
   }
 }
 
@@ -68,6 +69,8 @@ void SoundLevelMeter::turn_on() {
   this->reset();
   this->is_on_ = true;
   this->on_cv_.notify_one();
+  if (this->is_high_freq_)
+    this->high_freq_.start();
   ESP_LOGD(TAG, "Turned on");
 }
 
@@ -76,6 +79,8 @@ void SoundLevelMeter::turn_off() {
   this->reset();
   this->is_on_ = false;
   this->on_cv_.notify_one();
+  if (this->is_high_freq_)
+    this->high_freq_.stop();
   ESP_LOGD(TAG, "Turned off");
 }
 
@@ -95,9 +100,10 @@ void SoundLevelMeter::task(void *param) {
   auto warmup_start = millis();
   while (millis() - warmup_start < this_->warmup_interval_)
     this_->i2s_->read_samples(buffers);
-
   uint32_t process_time = 0, process_count = 0;
   uint64_t process_start;
+  if (this_->is_on_ && this_->is_high_freq_)
+    this_->high_freq_.start();
   while (1) {
     {
       std::unique_lock<std::mutex> lock(this_->on_mutex_);
@@ -160,7 +166,7 @@ void SoundLevelMeter::process(BufferStack<float> &buffers) {
 
 void SoundLevelMeter::defer(std::function<void()> &&f) {
   std::lock_guard<std::mutex> lock(this->defer_mutex_);
-  this->defer_queue_.push(std::move(f));
+  this->defer_queue_.push_back(std::move(f));
 }
 
 void SoundLevelMeter::reset() {

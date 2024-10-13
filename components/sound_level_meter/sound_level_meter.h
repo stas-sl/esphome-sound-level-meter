@@ -34,6 +34,7 @@ class SoundLevelMeter : public Component {
   optional<float> get_mic_sensitivity_ref();
   void set_offset(optional<float> offset);
   optional<float> get_offset();
+  void set_is_high_freq(bool is_high_freq);
   void add_sensor(SoundLevelMeterSensor *sensor);
   void add_dsp_filter(Filter *dsp_filter);
   virtual void setup() override;
@@ -56,12 +57,14 @@ class SoundLevelMeter : public Component {
   optional<float> mic_sensitivity_{};
   optional<float> mic_sensitivity_ref_{};
   optional<float> offset_{};
-  std::queue<std::function<void()>> defer_queue_;
+  std::deque<std::function<void()>> defer_queue_;
   std::mutex defer_mutex_;
   uint32_t update_interval_{60000};
   bool is_on_{true};
+  bool is_high_freq_{false};
   std::mutex on_mutex_;
   std::condition_variable on_cv_;
+  HighFrequencyLoopRequester high_freq_;
 
   void sort_sensors();
   void process(BufferStack<float> &buffers);

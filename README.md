@@ -271,7 +271,7 @@ For real-time visualization, I'm using web server number/slider controls to disp
 
 With 10 x 6 = 60 SOS filters, the component uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
 
-https://github.com/user-attachments/assets/91cd7d5c-e636-4d90-b046-68bd33df8db2
+https://github.com/user-attachments/assets/904a2a96-0c16-4797-9587-2558cc0c70f8
 
 While this example serves as a stress test, you could also use it to monitor different frequencies over longer time intervals with less frequent updates.
 

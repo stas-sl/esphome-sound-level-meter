@@ -60,6 +60,7 @@ CONF_MIC_SENSITIVITY = "mic_sensitivity"
 CONF_MIC_SENSITIVITY_REF = "mic_sensitivity_ref"
 CONF_OFFSET = "offset"
 CONF_IS_ON = "is_on"
+CONF_IS_HIGH_FREQ = "is_high_freq"
 CONF_DSP_FILTERS = "dsp_filters"
 
 ICON_WAVEFORM = "mdi:waveform"
@@ -150,6 +151,7 @@ CONFIG_SCHEMA = cv.Schema(
             CONF_UPDATE_INTERVAL, default="60s"
         ): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_IS_ON, default=True): cv.boolean,
+        cv.Optional(CONF_IS_HIGH_FREQ, default=False): cv.boolean,
         cv.Optional(CONF_BUFFER_SIZE, default=1024): cv.positive_not_null_int,
         cv.Optional(
             CONF_WARMUP_INTERVAL, default="500ms"
@@ -208,6 +210,7 @@ async def to_code(config):
     cg.add(var.set_task_stack_size(config[CONF_TASK_STACK_SIZE]))
     cg.add(var.set_task_priority(config[CONF_TASK_PRIORITY]))
     cg.add(var.set_task_core(config[CONF_TASK_CORE]))
+    cg.add(var.set_is_high_freq(config[CONF_IS_HIGH_FREQ]))
     if CONF_MIC_SENSITIVITY in config:
         cg.add(var.set_mic_sensitivity(config[CONF_MIC_SENSITIVITY]))
     if CONF_MIC_SENSITIVITY_REF in config:
