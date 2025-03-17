@@ -30,7 +30,7 @@ void I2SComponent::dump_config() {
   LOG_PIN("  BCK Pin: ", this->bck_pin_);
   LOG_PIN("  DIN Pin: ", this->din_pin_);
   LOG_PIN("  DOUT Pin: ", this->dout_pin_);
-  ESP_LOGCONFIG(TAG, "  Sample Rate: %u", this->sample_rate_);
+  ESP_LOGCONFIG(TAG, "  Sample Rate: %lu", this->sample_rate_);
   ESP_LOGCONFIG(TAG, "  Bits Per Sample: %u", this->bits_per_sample_);
   ESP_LOGCONFIG(TAG, "  DMA Buf Count: %u", this->dma_buf_count_);
   ESP_LOGCONFIG(TAG, "  DMA Buf Len: %u", this->dma_buf_len_);
