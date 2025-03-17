@@ -143,7 +143,7 @@ void I2SComponent::setup() {
                              .use_apll = this->use_apll_,
                              .tx_desc_auto_clear = false,
                              .fixed_mclk = 0,
-                             .mclk_multiple = I2S_MCLK_MULTIPLE_DEFAULT,
+                             .mclk_multiple = I2S_MCLK_MULTIPLE_256,
                              .bits_per_chan = i2s_bits_per_chan_t(0)};
 
   i2s_pin_config_t i2s_pin_config = {
