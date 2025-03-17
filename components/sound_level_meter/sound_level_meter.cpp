@@ -37,8 +37,8 @@ optional<float> SoundLevelMeter::get_offset() { return this->offset_; }
 void SoundLevelMeter::dump_config() {
   ESP_LOGCONFIG(TAG, "Sound Level Meter:");
   ESP_LOGCONFIG(TAG, "  Buffer Size: %u (samples)", this->buffer_size_);
-  ESP_LOGCONFIG(TAG, "  Warmup Interval: %u ms", this->warmup_interval_);
-  ESP_LOGCONFIG(TAG, "  Task Stack Size: %u", this->task_stack_size_);
+  ESP_LOGCONFIG(TAG, "  Warmup Interval: %lu ms", this->warmup_interval_);
+  ESP_LOGCONFIG(TAG, "  Task Stack Size: %lu", this->task_stack_size_);
   ESP_LOGCONFIG(TAG, "  Task Priority: %u", this->task_priority_);
   ESP_LOGCONFIG(TAG, "  Task Core: %u", this->task_core_);
   LOG_UPDATE_INTERVAL(this);
@@ -117,7 +117,7 @@ void SoundLevelMeter::task(void *param) {
       auto sr = this_->get_sample_rate();
       if (process_count >= sr * (this_->update_interval_ / 1000.f)) {
         auto t = uint32_t(float(process_time) / process_count * (sr / 1000.f));
-        ESP_LOGD(TAG, "Processing time per 1s of audio data (%u samples): %u ms", sr, t);
+        ESP_LOGD(TAG, "Processing time per 1s of audio data (%lu samples): %lu ms", sr, t);
         process_time = process_count = 0;
       }
     }
