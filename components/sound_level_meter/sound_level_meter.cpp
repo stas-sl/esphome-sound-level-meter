@@ -1,4 +1,5 @@
 #include "sound_level_meter.h"
+#include "esp_timer.h"
 
 namespace esphome {
 namespace sound_level_meter {
