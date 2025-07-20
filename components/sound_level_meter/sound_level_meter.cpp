@@ -117,7 +117,7 @@ void SoundLevelMeter::task(void *param) {
       auto sr = this_->get_sample_rate();
       if (process_count >= sr * (this_->update_interval_ / 1000.f)) {
         auto t = uint32_t(float(process_time) / process_count * (sr / 1000.f));
-        ESP_LOGD(TAG, "Processing time per 1s of audio data (%lu samples): %u ms", sr, t);
+        ESP_LOGD(TAG, "Processing time per 1s of audio data (%lu samples): %lu ms", sr, t);
         process_time = process_count = 0;
       }
     }
