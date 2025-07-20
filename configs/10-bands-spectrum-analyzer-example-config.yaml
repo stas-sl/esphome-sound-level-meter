@@ -13,7 +13,7 @@ esphome:
     - FS
     - WiFi
     - Update
-    - mathieucarbou/ESPAsyncWebServer @ 3.3.7
+    - ESP32Async/ESPAsyncWebServer @ 3.7.10
 
 external_components:
   - source: github://stas-sl/esphome-sound-level-meter
@@ -35,7 +35,8 @@ switch:
   - platform: template
     name: "On"
     restore_mode: DISABLED
-    web_server_sorting_weight: 1
+    web_server:
+      sorting_weight: 1
     lambda: |-
       return id(slm).is_on();
     turn_on_action:
@@ -54,7 +55,8 @@ light:
     default_transition_length: 0s
     flash_transition_length: 0s
     gamma_correct: 1
-    web_server_sorting_weight: 2
+    web_server:
+      sorting_weight: 2
 
 i2s:
   ws_pin: 40
@@ -194,7 +196,8 @@ sound_level_meter:
       name: LAeq
       id: LAeq
       unit_of_measurement: dBA
-      web_server_sorting_weight: 3
+      web_server:
+        sorting_weight: 3
       dsp_filters: [f_a]
       on_value:
         then:
@@ -310,7 +313,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 4
+    web_server:
+      sorting_weight: 4
     icon: mdi:waveform
   - platform: template
     name: "62 Hz"
@@ -319,7 +323,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 5
+    web_server:
+      sorting_weight: 5
     icon: mdi:waveform
   - platform: template
     name: "125 Hz"
@@ -328,7 +333,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 6
+    web_server:
+      sorting_weight: 6
     icon: mdi:waveform
   - platform: template
     name: "250 Hz"
@@ -337,7 +343,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 7
+    web_server:
+      sorting_weight: 7
     icon: mdi:waveform
   - platform: template
     name: "500 Hz"
@@ -346,7 +353,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 8
+    web_server:
+      sorting_weight: 8
     icon: mdi:waveform
   - platform: template
     name: "1 kHz"
@@ -355,7 +363,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 9
+    web_server:
+      sorting_weight: 9
     icon: mdi:waveform
   - platform: template
     name: "2 kHz"
@@ -364,7 +373,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 10
+    web_server:
+      sorting_weight: 10
     icon: mdi:waveform
   - platform: template
     name: "4 kHz"
@@ -373,7 +383,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 11
+    web_server:
+      sorting_weight: 11
     icon: mdi:waveform
   - platform: template
     name: "8 kHz"
@@ -382,7 +393,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 12
+    web_server:
+      sorting_weight: 12
     icon: mdi:waveform
   - platform: template
     name: "16 kHz"
@@ -391,7 +403,8 @@ number:
     min_value: 20
     max_value: 100
     step: 0.1
-    web_server_sorting_weight: 13
+    web_server:
+      sorting_weight: 13
     icon: mdi:waveform
 
 wifi:
