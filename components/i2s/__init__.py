@@ -18,6 +18,7 @@ CONF_DIN_PIN = "din_pin"
 CONF_DOUT_PIN = "dout_pin"
 CONF_SAMPLE_RATE = "sample_rate"
 CONF_BITS_PER_SAMPLE = "bits_per_sample"
+CONF_MCLK_MULTIPLE = "mclk_multiple"
 CONF_DMA_BUF_COUNT = "dma_buf_count"
 CONF_DMA_BUF_LEN = "dma_buf_len"
 CONF_USE_APLL = "use_apll"
@@ -31,6 +32,15 @@ CHANNELS = {
     "right": i2s_channel_fmt_t.I2S_CHANNEL_FMT_ONLY_RIGHT,
 }
 
+
+def validate_mclk_divisible_by_3(config):
+    if config[CONF_BITS_PER_SAMPLE] == 24 and config[CONF_MCLK_MULTIPLE] % 3 != 0:
+        raise cv.Invalid(
+            f"{CONF_MCLK_MULTIPLE} must be divisible by 3 when bits per sample is 24"
+        )
+    return config
+
+
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -41,6 +51,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_DOUT_PIN): pins.internal_gpio_output_pin_schema,
             cv.Optional(CONF_SAMPLE_RATE, 48000): cv.positive_not_null_int,
             cv.Optional(CONF_BITS_PER_SAMPLE, 16): cv.one_of(8, 16, 24, 32, int=True),
+            cv.Optional(CONF_MCLK_MULTIPLE, default=256):
+                cv.one_of(128, 192, 256, 384, 512, 576, 768, 1024, 1152, int=True),
             cv.Optional(CONF_DMA_BUF_COUNT, 8): cv.positive_not_null_int,
             cv.Optional(CONF_DMA_BUF_LEN, 256): cv.positive_not_null_int,
             cv.Optional(CONF_USE_APLL, False): cv.boolean,
@@ -49,6 +61,7 @@ CONFIG_SCHEMA = cv.All(
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.has_at_least_one_key(CONF_DIN_PIN, CONF_DOUT_PIN),
+    validate_mclk_divisible_by_3
 )
 
 
@@ -69,6 +82,7 @@ async def to_code(config):
         cg.add(var.set_dout_pin(dout_pin))
     cg.add(var.set_sample_rate(config[CONF_SAMPLE_RATE]))
     cg.add(var.set_bits_per_sample(config[CONF_BITS_PER_SAMPLE]))
+    cg.add(var.set_mclk_multiple(config[CONF_MCLK_MULTIPLE]))
     cg.add(var.set_dma_buf_count(config[CONF_DMA_BUF_COUNT]))
     cg.add(var.set_dma_buf_len(config[CONF_DMA_BUF_LEN]))
     cg.add(var.set_use_apll(config[CONF_USE_APLL]))

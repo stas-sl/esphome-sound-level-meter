@@ -31,6 +31,7 @@ i2s:
   # Alternatively, if your mic supports 24 bit resolution, you can
   # try bits_per_sample: 32 and bits_shift: 8
   bits_per_sample: 16           # default: 16
+  mclk_multiple: 256            # default: 256
   dma_buf_count: 8              # default: 8
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false

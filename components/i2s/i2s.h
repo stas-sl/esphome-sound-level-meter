@@ -20,6 +20,8 @@ class I2SComponent : public Component {
   uint32_t get_sample_rate() const;
   void set_bits_per_sample(uint8_t bits_per_sample);
   uint8_t get_bits_per_sample() const;
+  void set_mclk_multiple(uint32_t mclk_multiple);
+  uint32_t get_mclk_multiple() const;
   void set_dma_buf_count(int dma_buf_count);
   int get_dma_buf_count() const;
   void set_dma_buf_len(int dma_buf_len);
@@ -46,6 +48,7 @@ class I2SComponent : public Component {
 
   uint32_t sample_rate_{48000};
   uint8_t bits_per_sample_{32};
+  uint32_t mclk_multiple_{256};
   uint8_t port_num_{0};
   int dma_buf_count_{8};
   int dma_buf_len_{256};

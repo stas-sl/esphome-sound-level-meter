@@ -11,12 +11,12 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     env:
-      ESPHOME_VERSION: 2024.9.0
+      ESPHOME_VERSION: 2025.7.2
       PLATFORMIO_LIBDEPS_DIR: ~/.platformio/libdeps
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.13"]
 
     steps:
       - uses: actions/checkout@v4

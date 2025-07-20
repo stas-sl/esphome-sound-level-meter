@@ -40,6 +40,7 @@ i2s:
   din_pin: 19
   sample_rate: 48000
   bits_per_sample: 16
+  mclk_multiple: 256
   dma_buf_count: 8
   dma_buf_len: 256
   use_apll: true
@@ -91,7 +92,7 @@ interval:
           then:
             - http_request.post:
                 url: http://api.sensor.community/v1/push-sensor-data/
-                headers:
+                request_headers:
                   X-Pin: 15
                   X-Sensor: esp32-...  # replace with your sensor ID
                   Content-Type: application/json

@@ -39,8 +39,8 @@ void SoundLevelMeter::add_dsp_filter(Filter *dsp_filter) { this->dsp_filters_.pu
 void SoundLevelMeter::dump_config() {
   ESP_LOGCONFIG(TAG, "Sound Level Meter:");
   ESP_LOGCONFIG(TAG, "  Buffer Size: %u (samples)", this->buffer_size_);
-  ESP_LOGCONFIG(TAG, "  Warmup Interval: %u ms", this->warmup_interval_);
-  ESP_LOGCONFIG(TAG, "  Task Stack Size: %u", this->task_stack_size_);
+  ESP_LOGCONFIG(TAG, "  Warmup Interval: %lu ms", this->warmup_interval_);
+  ESP_LOGCONFIG(TAG, "  Task Stack Size: %lu", this->task_stack_size_);
   ESP_LOGCONFIG(TAG, "  Task Priority: %u", this->task_priority_);
   ESP_LOGCONFIG(TAG, "  Task Core: %u", this->task_core_);
   LOG_UPDATE_INTERVAL(this);
