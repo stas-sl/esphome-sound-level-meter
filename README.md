@@ -1,5 +1,8 @@
 # ESPHome Sound Level Meter [![CI](https://github.com/stas-sl/esphome-sound-level-meter/actions/workflows/ci.yaml/badge.svg)](https://github.com/stas-sl/esphome-sound-level-meter/actions/workflows/ci.yaml)
 
+> [!NOTE]
+> This component was originally developed a few years ago when ESPHome lacked official support for I2S audio. Since then, ESPHome has introduced its own official I2S [microphone](https://esphome.io/components/microphone/i2s_audio.html) and [sound_level](https://esphome.io/components/sensor/sound_level.html) components. For basic sound level measurements, I recommend using these official components, as they offer better compatibility with newer ESP32 variants. However, my component remains useful if you require advanced features like A/C-weighting or custom microphone equalization, which are not available in the official implementations yet.
+
 This component was made to measure environmental noise levels (Leq, Lmin, Lmax, Lpeak) with different frequency weightings over configured time intervals. It is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)).
 
 <img width="488" alt="esphome sound level meter" src="https://github.com/user-attachments/assets/442a9b5d-4607-4d39-945a-9949f19904e0">
