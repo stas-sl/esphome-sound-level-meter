@@ -23,6 +23,7 @@ i2s:
   din_pin: 19
   sample_rate: 48000            # default: 48000
   bits_per_sample: 32           # default: 32
+  mclk_multiple: 256            # default: 256
   dma_buf_count: 8              # default: 8
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false
@@ -264,9 +265,9 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 
 ### Supported platforms
 
-Tested with ESPHome version 2024.9.0, platforms:
-- [x] ESP32 (Arduino v2.0.6, ESP-IDF v4.4.5)
-- [x] ESP32-IDF (ESP-IDF v4.4.7)
+Tested with ESPHome version 2025.7.2, platforms:
+- [x] ESP32 (Arduino v3.1.3, ESP-IDF v5.3.2)
+- [x] ESP32-IDF (ESP-IDF v5.3.2)
 
 ### Sending data to sensor.community
 

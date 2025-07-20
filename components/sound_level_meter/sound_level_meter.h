@@ -1,5 +1,6 @@
 #pragma once
 
+#include "esp_timer.h"
 #include <mutex>
 #include <condition_variable>
 #include <algorithm>

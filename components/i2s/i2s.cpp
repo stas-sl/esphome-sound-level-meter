@@ -1,4 +1,5 @@
 #include "i2s.h"
+#include "esp_timer.h"
 
 namespace esphome {
 namespace i2s {
@@ -13,6 +14,8 @@ void I2SComponent::set_sample_rate(uint32_t sample_rate) { this->sample_rate_ = 
 uint32_t I2SComponent::get_sample_rate() const { return this->sample_rate_; }
 void I2SComponent::set_bits_per_sample(uint8_t bits_per_sample) { this->bits_per_sample_ = bits_per_sample; }
 uint8_t I2SComponent::get_bits_per_sample() const { return this->bits_per_sample_; }
+void I2SComponent::set_mclk_multiple(uint32_t mclk_multiple) { this->mclk_multiple_ = mclk_multiple; }
+uint32_t I2SComponent::get_mclk_multiple() const { return this->mclk_multiple_; }
 void I2SComponent::set_dma_buf_count(int dma_buf_count) { this->dma_buf_count_ = dma_buf_count; }
 int I2SComponent::get_dma_buf_count() const { return this->dma_buf_count_; }
 void I2SComponent::set_dma_buf_len(int dma_buf_len) { this->dma_buf_len_ = dma_buf_len; }
@@ -30,8 +33,9 @@ void I2SComponent::dump_config() {
   LOG_PIN("  BCK Pin: ", this->bck_pin_);
   LOG_PIN("  DIN Pin: ", this->din_pin_);
   LOG_PIN("  DOUT Pin: ", this->dout_pin_);
-  ESP_LOGCONFIG(TAG, "  Sample Rate: %u", this->sample_rate_);
+  ESP_LOGCONFIG(TAG, "  Sample Rate: %lu", this->sample_rate_);
   ESP_LOGCONFIG(TAG, "  Bits Per Sample: %u", this->bits_per_sample_);
+  ESP_LOGCONFIG(TAG, "  MCLK Multiple: %lu", this->mclk_multiple_);
   ESP_LOGCONFIG(TAG, "  DMA Buf Count: %u", this->dma_buf_count_);
   ESP_LOGCONFIG(TAG, "  DMA Buf Len: %u", this->dma_buf_len_);
   ESP_LOGCONFIG(TAG, "  Use APLL: %s", YESNO(this->use_apll_));
@@ -143,7 +147,7 @@ void I2SComponent::setup() {
                              .use_apll = this->use_apll_,
                              .tx_desc_auto_clear = false,
                              .fixed_mclk = 0,
-                             .mclk_multiple = I2S_MCLK_MULTIPLE_DEFAULT,
+                             .mclk_multiple = i2s_mclk_multiple_t(this->mclk_multiple_),
                              .bits_per_chan = i2s_bits_per_chan_t(0)};
 
   i2s_pin_config_t i2s_pin_config = {

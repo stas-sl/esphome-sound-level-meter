@@ -20,6 +20,7 @@ i2s:
   din_pin: 19
   sample_rate: 48000            # default: 48000
   bits_per_sample: 32           # default: 32
+  mclk_multiple: 256            # default: 256
   dma_buf_count: 8              # default: 8
   dma_buf_len: 256              # default: 256
   use_apll: true                # default: false
