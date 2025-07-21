@@ -109,10 +109,8 @@ CONFIG_FILTER_SCHEMA = cv.typed_schema(
     }
 )
 
-
 def config_group_schema(value):
     return CONFIG_GROUP_SCHEMA(value)
-
 
 CONFIG_GROUP_SCHEMA = (
     cv.Schema({
@@ -148,7 +146,6 @@ SOUND_LEVEL_METER_ACTION_SCHEMA = maybe_simple_id({
     cv.GenerateID(): cv.use_id(SoundLevelMeter)
 })
 
-
 async def groups_to_code(config, component, parent):
     for gc in config:
         g = cg.new_Pvariable(gc[CONF_ID])
@@ -173,7 +170,6 @@ async def groups_to_code(config, component, parent):
                     cg.add(s.set_update_interval(sc[CONF_UPDATE_INTERVAL]))
                 cg.add(g.add_sensor(s))
 
-
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
@@ -185,6 +181,7 @@ async def to_code(config):
     cg.add(var.set_task_stack_size(config[CONF_TASK_STACK_SIZE]))
     cg.add(var.set_task_priority(config[CONF_TASK_PRIORITY]))
     cg.add(var.set_task_core(config[CONF_TASK_CORE]))
+    cg.add(var.set_max_groups_depth(get_groups_depth(config[CONF_GROUPS]) + 1))
     if CONF_MIC_SENSITIVITY in config:
         cg.add(var.set_mic_sensitivity(config[CONF_MIC_SENSITIVITY]))
     if CONF_MIC_SENSITIVITY_REF in config:
@@ -195,6 +192,14 @@ async def to_code(config):
         cg.add(var.turn_off())
     await groups_to_code(config[CONF_GROUPS], var, var)
 
+def get_groups_depth(cur):
+    max_d = 0
+    for g in cur:
+        d = int(CONF_FILTERS in g)
+        if CONF_GROUPS in g:
+            d += get_groups_depth(g[CONF_GROUPS])
+        max_d = max(d, max_d)
+    return max_d
 
 @automation.register_action("sound_level_meter.toggle", ToggleAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
 @automation.register_action("sound_level_meter.turn_off", TurnOffAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
