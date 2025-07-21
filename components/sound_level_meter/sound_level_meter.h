@@ -1,13 +1,16 @@
 #pragma once
 
-#include "esp_timer.h"
 #include <mutex>
-#include <condition_variable>
 #include <algorithm>
-#include "esphome/core/component.h"
+
+#include "esp_timer.h"
+
 #include "esphome/core/automation.h"
+#include "esphome/core/component.h"
+#include "esphome/core/hal.h"
+#include "esphome/core/ring_buffer.h"
 #include "esphome/components/sensor/sensor.h"
-#include "esphome/components/i2s/i2s.h"
+#include "esphome/components/microphone/microphone_source.h"
 
 namespace esphome {
 namespace sound_level_meter {
@@ -17,14 +20,15 @@ template<typename T> class BufferStack;
 
 class SoundLevelMeter : public Component {
   friend class SoundLevelMeterSensor;
+  friend class SoundLevelMeterSensorMax;
+  friend class SoundLevelMeterSensorMin;
 
  public:
   void set_update_interval(uint32_t update_interval);
   uint32_t get_update_interval();
-  void set_buffer_size(uint32_t buffer_size);
-  uint32_t get_buffer_size();
-  uint32_t get_sample_rate();
-  void set_i2s(i2s::I2SComponent *i2s);
+  void set_ring_buffer_size(uint32_t ring_buffer_size);
+  uint32_t get_ring_buffer_size();
+  void set_microphone_source(microphone::MicrophoneSource *microphone_source);
   void set_warmup_interval(uint32_t warmup_interval);
   void set_task_stack_size(uint32_t task_stack_size);
   void set_task_priority(uint8_t task_priority);
@@ -36,22 +40,22 @@ class SoundLevelMeter : public Component {
   void set_offset(optional<float> offset);
   optional<float> get_offset();
   void set_is_high_freq(bool is_high_freq);
+  void set_is_auto_start(bool is_auto_start);
   void add_sensor(SoundLevelMeterSensor *sensor);
   void add_dsp_filter(Filter *dsp_filter);
   virtual void setup() override;
   virtual void loop() override;
   virtual void dump_config() override;
-  void turn_on();
-  void turn_off();
-  void toggle();
-  bool is_on();
+  void start();
+  void stop();
+  bool is_running();
 
  protected:
-  i2s::I2SComponent *i2s_{nullptr};
+  microphone::MicrophoneSource *microphone_source_{nullptr};
   std::vector<Filter *> dsp_filters_;
   std::vector<SoundLevelMeterSensor *> sensors_;
-  size_t buffer_size_{256};
-  uint32_t warmup_interval_{500};
+  size_t ring_buffer_size_ms_{256};
+  uint32_t warmup_interval_ms_{500};
   uint32_t task_stack_size_{1024};
   uint8_t task_priority_{1};
   uint8_t task_core_{1};
@@ -60,14 +64,20 @@ class SoundLevelMeter : public Component {
   optional<float> offset_{};
   std::deque<std::function<void()>> defer_queue_;
   std::mutex defer_mutex_;
-  uint32_t update_interval_{60000};
-  bool is_on_{true};
+  uint32_t update_interval_ms_{60000};
+  bool is_running_{false};
+  bool is_pending_stop_{false};
   bool is_high_freq_{false};
-  std::mutex on_mutex_;
-  std::condition_variable on_cv_;
+  bool is_auto_start_{true};
   HighFrequencyLoopRequester high_freq_;
+  std::unique_ptr<RingBuffer> ring_buffer_;
+  uint32_t ring_buffer_stats_free_{0};
+  uint32_t ring_buffer_stats_free_count_{0};
+  TaskHandle_t task_handle_{nullptr};
 
+  audio::AudioStreamInfo get_audio_stream_info() const;
   void sort_sensors();
+  size_t read_samples(std::vector<float> &data, TickType_t ticks_to_wait = portMAX_DELAY);
   void process(BufferStack<float> &buffers);
   // epshome's scheduler is not thred safe, so we have to use custom thread safe implementation
   // to execute sensor updates in main loop
@@ -91,6 +101,7 @@ class SoundLevelMeterSensor : public sensor::Sensor {
   SoundLevelMeter *parent_{nullptr};
   std::vector<Filter *> dsp_filters_;
   uint32_t update_samples_{0};
+  uint32_t update_interval_ms_{60000};
   float adjust_dB(float dB, bool is_rms = true);
 
   virtual void reset() = 0;
@@ -184,31 +195,21 @@ template<typename T> class BufferStack {
   std::vector<std::vector<T>> buffers_;
 };
 
-template<typename... Ts> class TurnOnAction : public Action<Ts...> {
+template<typename... Ts> class StartAction : public Action<Ts...> {
  public:
-  explicit TurnOnAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
+  explicit StartAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
 
-  void play(Ts... x) override { this->sound_level_meter_->turn_on(); }
+  void play(Ts... x) override { this->sound_level_meter_->start(); }
 
  protected:
   SoundLevelMeter *sound_level_meter_;
 };
 
-template<typename... Ts> class TurnOffAction : public Action<Ts...> {
+template<typename... Ts> class StopAction : public Action<Ts...> {
  public:
-  explicit TurnOffAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
+  explicit StopAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
 
-  void play(Ts... x) override { this->sound_level_meter_->turn_off(); }
-
- protected:
-  SoundLevelMeter *sound_level_meter_;
-};
-
-template<typename... Ts> class ToggleAction : public Action<Ts...> {
- public:
-  explicit ToggleAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
-
-  void play(Ts... x) override { this->sound_level_meter_->toggle(); }
+  void play(Ts... x) override { this->sound_level_meter_->stop(); }
 
  protected:
   SoundLevelMeter *sound_level_meter_;

@@ -4,20 +4,22 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation, core
 from esphome.automation import maybe_simple_id
-from esphome.components import sensor, i2s
+from esphome.components import sensor, microphone
 from esphome.const import (
     CONF_ID,
     CONF_SENSORS,
     CONF_WINDOW_SIZE,
     CONF_UPDATE_INTERVAL,
     CONF_TYPE,
+    CONF_MICROPHONE,
     UNIT_DECIBEL,
     STATE_CLASS_MEASUREMENT,
+    DEVICE_CLASS_SOUND_PRESSURE,
 )
 
 CODEOWNERS = ["@stas-sl"]
-DEPENDENCIES = ["esp32", "i2s"]
-AUTO_LOAD = ["sensor"]
+DEPENDENCIES = ["esp32", "microphone"]
+AUTO_LOAD = ["sensor", "audio"]
 MULTI_CONF = True
 
 sound_level_meter_ns = cg.esphome_ns.namespace("sound_level_meter")
@@ -39,17 +41,15 @@ SoundLevelMeterSensorPeak = sound_level_meter_ns.class_(
 )
 Filter = sound_level_meter_ns.class_("Filter")
 SOS_Filter = sound_level_meter_ns.class_("SOS_Filter", Filter)
-ToggleAction = sound_level_meter_ns.class_("ToggleAction", automation.Action)
-TurnOffAction = sound_level_meter_ns.class_("TurnOffAction", automation.Action)
-TurnOnAction = sound_level_meter_ns.class_("TurnOnAction", automation.Action)
+StartAction = sound_level_meter_ns.class_("StartAction", automation.Action)
+StopAction = sound_level_meter_ns.class_("StopAction", automation.Action)
 
 
-CONF_I2S_ID = "i2s_id"
 CONF_EQ = "eq"
 CONF_MAX = "max"
 CONF_MIN = "min"
 CONF_PEAK = "peak"
-CONF_BUFFER_SIZE = "buffer_size"
+CONF_RING_BUFFER_SIZE = "ring_buffer_size"
 CONF_SOS = "sos"
 CONF_COEFFS = "coeffs"
 CONF_WARMUP_INTERVAL = "warmup_interval"
@@ -59,9 +59,9 @@ CONF_TASK_CORE = "task_core"
 CONF_MIC_SENSITIVITY = "mic_sensitivity"
 CONF_MIC_SENSITIVITY_REF = "mic_sensitivity_ref"
 CONF_OFFSET = "offset"
-CONF_IS_ON = "is_on"
-CONF_IS_HIGH_FREQ = "is_high_freq"
+CONF_HIGH_FREQ = "high_freq"
 CONF_DSP_FILTERS = "dsp_filters"
+CONF_AUTO_START = "auto_start"
 
 ICON_WAVEFORM = "mdi:waveform"
 
@@ -87,6 +87,7 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
+            device_class=DEVICE_CLASS_SOUND_PRESSURE,
             icon=ICON_WAVEFORM,
         ).extend(
             {
@@ -101,6 +102,7 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
+            device_class=DEVICE_CLASS_SOUND_PRESSURE,
             icon=ICON_WAVEFORM,
         ).extend(
             {
@@ -116,6 +118,7 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
+            device_class=DEVICE_CLASS_SOUND_PRESSURE,
             icon=ICON_WAVEFORM,
         ).extend(
             {
@@ -131,6 +134,7 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
+            device_class=DEVICE_CLASS_SOUND_PRESSURE,
             icon=ICON_WAVEFORM,
         ).extend(
             {
@@ -146,16 +150,15 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(SoundLevelMeter),
-        cv.GenerateID(CONF_I2S_ID): cv.use_id(i2s.I2SComponent),
-        cv.Optional(
-            CONF_UPDATE_INTERVAL, default="60s"
-        ): cv.positive_time_period_milliseconds,
-        cv.Optional(CONF_IS_ON, default=True): cv.boolean,
-        cv.Optional(CONF_IS_HIGH_FREQ, default=False): cv.boolean,
-        cv.Optional(CONF_BUFFER_SIZE, default=1024): cv.positive_not_null_int,
-        cv.Optional(
-            CONF_WARMUP_INTERVAL, default="500ms"
-        ): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_MICROPHONE, default={}): microphone.microphone_source_schema(
+            min_bits_per_sample=16,
+            max_bits_per_sample=32,
+        ),
+        cv.Optional(CONF_UPDATE_INTERVAL, default="60s"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_AUTO_START, default=True): cv.boolean,
+        cv.Optional(CONF_HIGH_FREQ, default=False): cv.boolean,
+        cv.Optional(CONF_RING_BUFFER_SIZE, default="100ms"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_WARMUP_INTERVAL, default="0ms"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_TASK_STACK_SIZE, default=4096): cv.positive_not_null_int,
         cv.Optional(CONF_TASK_PRIORITY, default=2): cv.uint8_t,
         cv.Optional(CONF_TASK_CORE, default=1): cv.int_range(0, 1),
@@ -202,23 +205,24 @@ async def add_sensor(config, parent):
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    i2s_component = await cg.get_variable(config[CONF_I2S_ID])
-    cg.add(var.set_i2s(i2s_component))
+    mic_source = await microphone.microphone_source_to_code(
+        config[CONF_MICROPHONE], passive=False
+    )
+    cg.add(var.set_microphone_source(mic_source))
     cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL]))
-    cg.add(var.set_buffer_size(config[CONF_BUFFER_SIZE]))
+    cg.add(var.set_ring_buffer_size(config[CONF_RING_BUFFER_SIZE]))
     cg.add(var.set_warmup_interval(config[CONF_WARMUP_INTERVAL]))
     cg.add(var.set_task_stack_size(config[CONF_TASK_STACK_SIZE]))
     cg.add(var.set_task_priority(config[CONF_TASK_PRIORITY]))
     cg.add(var.set_task_core(config[CONF_TASK_CORE]))
-    cg.add(var.set_is_high_freq(config[CONF_IS_HIGH_FREQ]))
+    cg.add(var.set_is_high_freq(config[CONF_HIGH_FREQ]))
+    cg.add(var.set_is_auto_start(config[CONF_AUTO_START]))
     if CONF_MIC_SENSITIVITY in config:
         cg.add(var.set_mic_sensitivity(config[CONF_MIC_SENSITIVITY]))
     if CONF_MIC_SENSITIVITY_REF in config:
         cg.add(var.set_mic_sensitivity_ref(config[CONF_MIC_SENSITIVITY_REF]))
     if CONF_OFFSET in config:
         cg.add(var.set_offset(config[CONF_OFFSET]))
-    if not config[CONF_IS_ON]:
-        cg.add(var.turn_off())
 
     for fc in config[CONF_DSP_FILTERS]:
         await add_dsp_filter(fc, var)
@@ -228,13 +232,10 @@ async def to_code(config):
 
 
 @automation.register_action(
-    "sound_level_meter.toggle", ToggleAction, SOUND_LEVEL_METER_ACTION_SCHEMA
+    "sound_level_meter.start", StartAction, SOUND_LEVEL_METER_ACTION_SCHEMA
 )
 @automation.register_action(
-    "sound_level_meter.turn_off", TurnOffAction, SOUND_LEVEL_METER_ACTION_SCHEMA
-)
-@automation.register_action(
-    "sound_level_meter.turn_on", TurnOnAction, SOUND_LEVEL_METER_ACTION_SCHEMA
+    "sound_level_meter.stop", StopAction, SOUND_LEVEL_METER_ACTION_SCHEMA
 )
 async def switch_toggle_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
