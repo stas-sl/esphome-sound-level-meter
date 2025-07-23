@@ -1,19 +1,6 @@
 esphome:
   name: sound-level-meter
   friendly_name: 10 Bands Spectrum Analyzer
-  platformio_options:
-    board_build.f_cpu: 240000000
-    lib_ignore:
-      - AsyncTCP-esphome
-      - ESPAsyncWebServer-esphome
-  # you can use standard ESPAsyncWebServer-esphome server, 
-  # but I find this fork significantly more stable, 
-  # especially with frequent updated
-  libraries:
-    - FS
-    - WiFi
-    - Update
-    - ESP32Async/ESPAsyncWebServer @ 3.7.10
 
 external_components:
   - source: github://stas-sl/esphome-sound-level-meter
@@ -21,8 +8,9 @@ external_components:
 esp32:
   board: esp32-s3-devkitc-1
   variant: esp32s3
+  cpu_frequency: 240MHz
   framework:
-    type: arduino
+    type: esp-idf
 
 logger:
   level: ERROR
@@ -38,43 +26,46 @@ switch:
     web_server:
       sorting_weight: 1
     lambda: |-
-      return id(slm).is_on();
+      return id(slm).is_running();
     turn_on_action:
-      - sound_level_meter.turn_on
+      - sound_level_meter.start
     turn_off_action:
-      - sound_level_meter.turn_off
+      - sound_level_meter.stop
 
 light:
-  - platform: neopixelbus
+  - platform: esp32_rmt_led_strip
     id: led
-    type: GRB
-    variant: WS2812
+    rgb_order: GRB
     pin: 48
     num_leds: 1
     name: LED
+    chipset: WS2812
     default_transition_length: 0s
     flash_transition_length: 0s
-    gamma_correct: 1
+    gamma_correct: 1.0
     web_server:
       sorting_weight: 2
 
-i2s:
-  ws_pin: 40
-  bck_pin: 39
-  din_pin: 38
-  sample_rate: 48000
-  bits_per_sample: 16
-  dma_buf_count: 8
-  dma_buf_len: 256
-  use_apll: true
-  bits_shift: 0
-  channel: right
+i2s_audio:
+  i2s_lrclk_pin: GPIO40
+  i2s_bclk_pin: GPIO39
+
+microphone:
+  - platform: i2s_audio
+    id: external_mic
+    adc_type: external
+    i2s_din_pin: GPIO38
+    channel: right
+    sample_rate: 48000
+    bits_per_sample: 32bit
+    mclk_multiple: 256
+    use_apll: true
+    i2s_mode: primary
 
 sound_level_meter:
   id: slm
-  is_on: false
   update_interval: 100ms
-  buffer_size: 1024
+  ring_buffer_size: 100ms
   warmup_interval: 500ms
   task_stack_size: 4096
   task_priority: 2

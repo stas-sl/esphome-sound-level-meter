@@ -24,61 +24,52 @@ external_components:
 For configuration options see [minimal-example-config.yaml](configs/minimal-example-config.yaml) or [advanced-example-config.yaml](configs/advanced-example-config.yaml). I would recommend to start from minimal config, and if it works and produces reasonable values (30-100 dB SPL), then add more filters/sensors.
 
 ```yaml
-i2s:
-  bck_pin: 23                   # also labeled as SCK
-  ws_pin: 18
-  din_pin: 19                   # also labeled as SD
-  sample_rate: 48000            # default: 48000
+# see official docs https://esphome.io/components/i2s_audio.html
+i2s_audio: 
+  i2s_lrclk_pin: GPIO18
+  i2s_bclk_pin: GPIO23
 
-  # Common settings are bits_per_sample: 16 and bits_shift: 0,
-  # which should work for most microphones. A 16-bit resolution provides
-  # a 96 dB dynamic range, sufficient to cover the dynamic range of most
-  # MEMS microphones.
-  # Alternatively, if your mic supports 24 bit resolution, you can
-  # try bits_per_sample: 32 and bits_shift: 8
-  bits_per_sample: 16           # default: 16
-  mclk_multiple: 256            # default: 256
-  dma_buf_count: 8              # default: 8
-  dma_buf_len: 256              # default: 256
-  use_apll: true                # default: false
-
-  # according to datasheet when L/R pin is connected to GND,
-  # the mic should output its signal in the left channel,
-  # but on some boards I've encountered the opposite, 
-  # so you can try both
-  channel: right                # default: right
-
-  # right shift samples.
-  # for example if mic has 24 bit resolution, and
-  # i2s configured as 32 bits, then audio data will be aligned left (MSB)
-  # and LSB will be padded with zeros, so you might want to shift them right by 8 bits
-  bits_shift: 0                 # default: 0
+# see official docs https://esphome.io/components/microphone/i2s_audio
+microphone:
+  - platform: i2s_audio
+    id: mic
+    adc_type: external
+    i2s_din_pin: GPIO19
+    channel: left
+    sample_rate: 48000
+    bits_per_sample: 32bit
+    i2s_mode: primary
 
 sound_level_meter:
   id: sound_level_meter1
+
+  # previously difined microphone instance, or you can even omit it if
+  # there is only one mic defined - it will be used by default
+  microphone: 
+    microphone: mic
+    bits_per_sample: 32
 
   # update_interval specifies over which interval to aggregate audio data
   # you can specify default update_interval on top level, but you can also override
   # it further by specifying it on sensor level
   update_interval: 60s           # default: 60s
 
-  # you can disable (turn off) component by default (on boot)
-  # and turn it on later when needed via sound_level_meter.turn_on/toggle actions;
-  # when used with switch it might conflict/being overriden by
-  # switch state restoration logic, so you have to either disable it in
-  # switch config and then is_on property here will have effect, 
-  # or completely rely on switch state restoration/initialization and 
-  # any value set here will be ignored
-  is_on: true                   # default: true
+  # start sound level meter automatically on boot
+  auto_start: true              # default: true
 
-  # buffer_size is in samples (not bytes), so for float data type
-  # number of bytes will be buffer_size * 4
-  buffer_size: 1024             # default: 1024
+  ring_buffer_size: 100ms       # default: 100ms
 
   # ignore audio data at startup for this long
   warmup_interval: 500ms        # default: 500ms
 
-  # audio processing runs in a separate task, you can change its settings below
+  # audio processing runs in a separate task, you can change its settings below.
+  # idle task priority is 0,
+  # main esphome loop priority is 1,
+  # critical system tasks have priorities 18, 19, 20...
+  # I set the priority to 2, slightly higher than the main loop,
+  # because audio processing is highly sensitive to timing.
+  # Large delays from certain components could cause the
+  # DMA buffers to overflow, resulting in lost audio data.
   task_stack_size: 4096         # default: 4096
   task_priority: 2              # default: 2
   task_core: 1                  # default: 1
@@ -232,37 +223,19 @@ sound_level_meter:
 
 # automation
 # available actions:
-#   - sound_level_meter.turn_on
-#   - sound_level_meter.turn_off
-#   - sound_level_meter.toggle
+#   - sound_level_meter.start
+#   - sound_level_meter.stop
 switch:
   - platform: template
     name: "Sound Level Meter Switch"
     icon: mdi:power
-    # if you want is_on property on component to have effect, then set
-    # restore_mode to DISABLED, or alternatively you can use other modes
-    # (more on them in esphome docs), then is_on property on the component will
-    # be overriden by the switch
-    restore_mode: DISABLED # ALWAYS_OFF | ALWAYS_ON | RESTORE_DEFAULT_OFF | RESTORE_DEFAULT_ON
+    restore_mode: DISABLED
     lambda: |-
-      return id(sound_level_meter1).is_on();
+      return id(sound_level_meter1).is_running();
     turn_on_action:
-      - sound_level_meter.turn_on
+      - sound_level_meter.start
     turn_off_action:
-      - sound_level_meter.turn_off
-
-button:
-  - platform: template
-    name: "Sound Level Meter Toggle Button"
-    on_press:
-      - sound_level_meter.toggle: sound_level_meter1
-
-binary_sensor:
-  - platform: gpio
-    pin: GPIO0
-    name: "Sound Level Meter GPIO Toggle"
-    on_press:
-      - sound_level_meter.toggle: sound_level_meter1
+      - sound_level_meter.stop
 ```
 
 ## 10 bands spectrum analyzer
@@ -317,23 +290,58 @@ Tested with ESPHome version 2025.7.2, platforms:
 
 Setting up I2S microphones, including correct wiring, identifying the right pins, and finding the correct setting values, can be tricky and frustrating, especially if you're doing it for the first time (and even if you're not). With numerous different boards and microphones, each with its own peculiarities, it can be a challenge. Below, I’ll summarize the best advice for troubleshooting if things don't work on the first attempt.
 
-1. Double check your wires. I believe this is the most frequent source of mistakes. Try connecting L/R to GND or to VCC; or alternatively specify left or right channel in i2s configuration. Try different PINS, as some different boards might use some PINS for other purposes.
+1. Double check your wires. I believe this is the most frequent source of mistakes. Try connecting L/R to GND or to VCC; or alternatively specify left or right channel in microphone configuration. Try different PINS, as some different boards might use some PINS for other purposes.
 
-2. If you are receiving `-inf` values, it indicates that the input data consists entirely of zeros. This typically means you either have incorrect wiring or an incorrect PIN assignment in your i2s config.
+2. If you are receiving `-inf` values, it indicates that the input data consists entirely of zeros. This typically means you either have incorrect wiring or an incorrect PIN assignment in your i2s_audio/microphone config.
 
-3. I would recommend starting from [minimal-example-config.yaml](configs/minimal-example-config.yaml) and ensuring that it produces values in reasonable range (30-100 dB SPL) and it reacts accordingly if you clap or produce louder noises, before proceeding further.
+3. I would recommend starting from [minimal-example-config.yaml](configs/minimal-example-config.yaml) and ensuring that it produces values in reasonable range (30-80 dB SPL) and it reacts accordingly if you clap or produce louder noises, before proceeding further.
 
-4. Most microphones should work with `sample_rate: 16` and `bits_shift: 0`, but you can try other settings like `sample_rate: 32` and `bits_shift: 8` for 24 bits microphones.
+4. I tested it only on ESP32/ESP32 S3, that have 2 CPU cores, so not sure how it will work on other chips.
 
-5. I tested it only on ESP32/ESP32 S3, that have 2 CPU cores, so not sure how it will work on other chips.
+5. If you are experiencing performance issues, set logger level to `DEBUG` and the component will print CPU and ring buffer utilization. 
 
-6. If you are experiencing performance issues, set logger level to `DEBUG` and the component will print CPU utilization, which shouldn't be higher than 80%. 
+6. If you've set up everything correctly, then in a quite room the lowest LAeq levels should correspond to the noise floor levels from your mic specification. For example for INMP441 it should be ~33 dBA +/- few dBs. Don't confuse this with dBZ levels, which do not have A-weighting applied and can therefore be 5-15 dB higher.
 
-7. If you've set up everything correctly, then in a quite room the lowest LAeq levels should correspond to the noise floor levels from your mic specification. For example for INMP441 it should be ~33 dBA +/- few dBs. Don't confuse this with dBZ levels, which do not have A-weighting applied and can therefore be 5-15 dB higher.
+7. Sometimes, even in complete silence, LAeq values may not reach the noise floor level. This can indicate the presence of other noises caused by electromagnetic or RF interference, which may be due to the WiFi module, a poor power supply, long wires, etc. For instance, on one board, I couldn’t achieve lower than 40-45 dBA until I reduced the WiFi power by setting `output_power: 8.5 dB` in config, after which I immediately obtained the expected 33 dBA.
 
-8. Sometimes, even in complete silence, LAeq values may not reach the noise floor level. This can indicate the presence of other noises caused by electromagnetic or RF interference, which may be due to the WiFi module, a poor power supply, long wires, etc. For instance, on one board, I couldn’t achieve lower than 40-45 dBA until I reduced the WiFi power by setting `output_power: 8.5 dB` in config, after which I immediately obtained the expected 33 dBA.
+8. Try official [sound_level component](https://esphome.io/components/sensor/sound_level.html). It uses a little bit different scale, so you will see a number < 0. Where 0 dB corresponds to loudest possible sound, and in a quite room you should expect < -80 dB.
 
-9. If none of the above helps, debugging may become more challenging. I personally spent plenty of hours troubleshooting I2S issues by writing specific sketches to print audio data or to record it for playback and analysis on my PC. Another option might be to try native ESPHome's i2s_audio/microphone components to ensure that your board/microphone can work together and then use those settings that worked whith this component. Or maybe even try some other examples/projects that work with i2s audio.
+9. You can also stream audio to your PC and listen to it. Fortunately, it is now very easy using the microphone's `on_data` handler and [udp component](https://esphome.io/components/udp.html):
+
+```yaml
+# streaming audio over UDP
+
+i2s_audio:
+  i2s_lrclk_pin: GPIOXX
+  i2s_bclk_pin: GPIOYY
+
+microphone:
+  - platform: i2s_audio
+    id: mic
+    adc_type: external
+    i2s_din_pin: GPIOZZ
+    channel: left
+    sample_rate: 48000
+    bits_per_sample: 16bit
+    i2s_mode: primary
+    on_data:
+      - udp.write:
+          data: !lambda 'return x;'
+
+udp:
+  addresses: 192.168.xx.xx # where to stream the audio
+  port: 1234
+```
+
+On the receiving end, you can use ffplay or mpv to play back the audio:
+
+```bash
+ffplay -fflags nobuffer -flags low_delay -f s16le -ar 48000 -ch_layout mono -probesize 32 -analyzeduration 0 -af volume=30dB udp://0.0.0.0:1234
+
+mpv udp://0.0.0.0:1234 -v --demuxer=rawaudio --demuxer-rawaudio-channels=1 --demuxer-rawaudio-rate=48000 --demuxer-rawaudio-format=s16le --untimed --cache=no -af volume=30dB
+```
+
+ffplay even displays by default nice spectrogram of playing audio.
 
 ## References
 

@@ -24,7 +24,7 @@ ota:
 http_request:
   verify_ssl: false
   timeout: 5s
-  watchdog_timeout: 10s
+  watchdog_timeout: 20s
 
 wifi:
   ssid: !secret wifi_ssid
@@ -34,20 +34,25 @@ wifi:
 web_server:
   port: 80
 
-i2s:
-  ws_pin: 18
-  bck_pin: 23
-  din_pin: 19
-  sample_rate: 48000
-  bits_per_sample: 16
-  mclk_multiple: 256
-  dma_buf_count: 8
-  dma_buf_len: 256
-  use_apll: true
-  bits_shift: 0
-  channel: right
+i2s_audio: 
+  i2s_lrclk_pin: GPIO18
+  i2s_bclk_pin: GPIO23
+
+microphone:
+  - platform: i2s_audio
+    id: mic
+    adc_type: external
+    i2s_din_pin: GPIO19
+    channel: left
+    sample_rate: 48000
+    bits_per_sample: 32bit
+    i2s_mode: primary
 
 sound_level_meter:
+  microphone: 
+    microphone: mic
+    bits_per_sample: 32
+
   update_interval: 150s  # to match original sensor.community firmware settings
   warmup_interval: 500ms
   mic_sensitivity: -26dB
