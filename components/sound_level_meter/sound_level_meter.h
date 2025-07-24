@@ -75,6 +75,7 @@ class SoundLevelMeter : public Component {
   TaskHandle_t task_handle_{nullptr};
 
   audio::AudioStreamInfo get_audio_stream_info() const;
+  uint32_t ms_to_frames(uint32_t ms);
   void sort_sensors();
   size_t read_samples(std::vector<float> &data, TickType_t ticks_to_wait = portMAX_DELAY);
   void process(BufferStack<float> &buffers);

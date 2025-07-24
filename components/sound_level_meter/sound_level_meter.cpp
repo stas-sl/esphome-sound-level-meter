@@ -48,6 +48,10 @@ audio::AudioStreamInfo SoundLevelMeter::get_audio_stream_info() const {
   return this->microphone_source_->get_audio_stream_info();
 }
 
+uint32_t SoundLevelMeter::ms_to_frames(uint32_t ms) {
+  return this->get_audio_stream_info().get_sample_rate() * (ms / 1000.f);
+}
+
 void SoundLevelMeter::dump_config() {
   ESP_LOGCONFIG(TAG, "Sound Level Meter:");
   ESP_LOGCONFIG(TAG, "  Ring Buffer Size: %u ms)", this->ring_buffer_size_ms_);
@@ -113,16 +117,15 @@ void SoundLevelMeter::task(void *param) {
   SoundLevelMeter *this_ = reinterpret_cast<SoundLevelMeter *>(param);
   this_->is_running_ = true;
   {
-    const auto &asi = this_->get_audio_stream_info();
-    this_->ring_buffer_ = RingBuffer::create(asi.ms_to_bytes(this_->ring_buffer_size_ms_));
-    BufferStack<float> buffers(asi.ms_to_frames(AUDIO_BUFFER_DURATION_MS));
+    this_->ring_buffer_ = RingBuffer::create(this_->get_audio_stream_info().ms_to_bytes(this_->ring_buffer_size_ms_));
+    BufferStack<float> buffers(this_->ms_to_frames(AUDIO_BUFFER_DURATION_MS));
 
     this_->reset();
 
     this_->microphone_source_->start();
 
     for (auto &s : this_->sensors_) {
-      s->update_samples_ = this_->get_audio_stream_info().ms_to_frames(s->update_interval_ms_);
+      s->update_samples_ = this_->ms_to_frames(s->update_interval_ms_);
     }
 
     if (this_->is_high_freq_)
@@ -159,7 +162,7 @@ void SoundLevelMeter::task(void *param) {
         process_time += esp_timer_get_time() - process_start;
         process_count += buffers.current().size();
 
-        if (process_count >= asi.ms_to_frames(this_->update_interval_ms_)) {
+        if (process_count >= this_->ms_to_frames(this_->update_interval_ms_)) {
           auto cpu_util = float(process_time) / 1000 / this_->update_interval_ms_;
           auto rb_size = this_->ring_buffer_->available() + this_->ring_buffer_->free();
           auto rb_util =
@@ -263,7 +266,7 @@ void SoundLevelMeterSensor::set_parent(SoundLevelMeter *parent) {
 
 void SoundLevelMeterSensor::set_update_interval(uint32_t update_interval_ms) {
   this->update_interval_ms_ = update_interval_ms;
-  this->update_samples_ = this->parent_->get_audio_stream_info().ms_to_frames(update_interval_ms);
+  this->update_samples_ = this->parent_->ms_to_frames(update_interval_ms);
 }
 
 void SoundLevelMeterSensor::add_dsp_filter(Filter *dsp_filter) { this->dsp_filters_.push_back(dsp_filter); }
@@ -322,7 +325,7 @@ void SoundLevelMeterSensorEq::reset() {
 /* SoundLevelMeterSensorMax */
 
 void SoundLevelMeterSensorMax::set_window_size(uint32_t window_size_ms) {
-  this->window_samples_ = this->parent_->get_audio_stream_info().ms_to_frames(window_size_ms);
+  this->window_samples_ = this->parent_->ms_to_frames(window_size_ms);
 }
 
 void SoundLevelMeterSensorMax::process(std::vector<float> &buffer) {
@@ -356,7 +359,7 @@ void SoundLevelMeterSensorMax::reset() {
 /* SoundLevelMeterSensorMin */
 
 void SoundLevelMeterSensorMin::set_window_size(uint32_t window_size_ms) {
-  this->window_samples_ = this->parent_->get_audio_stream_info().ms_to_frames(window_size_ms);
+  this->window_samples_ = this->parent_->ms_to_frames(window_size_ms);
 }
 
 void SoundLevelMeterSensorMin::process(std::vector<float> &buffer) {
