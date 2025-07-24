@@ -1,7 +1,6 @@
 #include "sound_level_meter.h"
 
-namespace esphome {
-namespace sound_level_meter {
+namespace esphome::sound_level_meter {
 
 static constexpr const char *TAG = "sound_level_meter";
 
@@ -66,9 +65,6 @@ void SoundLevelMeter::dump_config() {
 
 void SoundLevelMeter::setup() {
   this->sort_sensors();
-  for (auto &s : this->sensors_) {
-    s->update_samples_ = this->get_audio_stream_info().ms_to_frames(s->update_interval_ms_);
-  }
 
   this->microphone_source_->add_data_callback([this](const std::vector<uint8_t> &data) {
     if (this->ring_buffer_ != nullptr) {
@@ -123,8 +119,10 @@ void SoundLevelMeter::task(void *param) {
 
     this_->reset();
 
-    if (!this_->microphone_source_->is_passive()) {
-      this_->microphone_source_->start();
+    this_->microphone_source_->start();
+
+    for (auto &s : this_->sensors_) {
+      s->update_samples_ = this_->get_audio_stream_info().ms_to_frames(s->update_interval_ms_);
     }
 
     if (this_->is_high_freq_)
@@ -476,5 +474,4 @@ template<typename T> void BufferStack<T>::reset() { this->index_ = 0; }
 
 template<typename T> BufferStack<T>::operator std::vector<T> &() { return this->current(); }
 
-}  // namespace sound_level_meter
-}  // namespace esphome
+}  // namespace esphome::sound_level_meter

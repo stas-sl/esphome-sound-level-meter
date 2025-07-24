@@ -12,8 +12,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/microphone/microphone_source.h"
 
-namespace esphome {
-namespace sound_level_meter {
+namespace esphome::sound_level_meter {
 class SoundLevelMeterSensor;
 class Filter;
 template<typename T> class BufferStack;
@@ -215,5 +214,4 @@ template<typename... Ts> class StopAction : public Action<Ts...> {
   SoundLevelMeter *sound_level_meter_;
 };
 
-}  // namespace sound_level_meter
-}  // namespace esphome
+}  // namespace esphome::sound_level_meter
