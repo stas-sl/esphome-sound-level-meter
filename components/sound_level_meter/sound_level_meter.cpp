@@ -204,15 +204,13 @@ void SoundLevelMeter::sort_sensors() {
 size_t SoundLevelMeter::read_samples(std::vector<float> &data, TickType_t ticks_to_wait) {
   uint8_t bytes_per_sample = this->get_audio_stream_info().samples_to_bytes(1);
 
-  size_t bytes_read =
-      this->ring_buffer_->read(reinterpret_cast<void *>(data.data()), data.size() * bytes_per_sample, ticks_to_wait);
+  size_t bytes_read = this->ring_buffer_->read(data.data(), data.size() * bytes_per_sample, ticks_to_wait);
   size_t samples_read = bytes_read / bytes_per_sample;
   if (samples_read > 0) {
     data.resize(samples_read);
+    auto data_as_uint8 = reinterpret_cast<const uint8_t *>(data.data());
     for (int i = bytes_read - bytes_per_sample, j = samples_read - 1; i >= 0; i -= bytes_per_sample, j--) {
-      data[j] =
-          audio::unpack_audio_sample_to_q31(&reinterpret_cast<const uint8_t *>(data.data())[i], bytes_per_sample) /
-          float(INT32_MAX);
+      data[j] = audio::unpack_audio_sample_to_q31(&data_as_uint8[i], bytes_per_sample) / float(INT32_MAX);
     }
   }
   return samples_read;
