@@ -70,8 +70,7 @@ class SoundLevelMeter : public Component {
   bool is_auto_start_{true};
   HighFrequencyLoopRequester high_freq_;
   std::unique_ptr<RingBuffer> ring_buffer_;
-  uint32_t ring_buffer_stats_free_{0};
-  uint32_t ring_buffer_stats_free_count_{0};
+  size_t ring_buffer_stats_free_{SIZE_MAX};
   TaskHandle_t task_handle_{nullptr};
 
   audio::AudioStreamInfo get_audio_stream_info() const;

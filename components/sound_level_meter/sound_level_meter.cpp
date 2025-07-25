@@ -77,8 +77,7 @@ void SoundLevelMeter::setup() {
         ESP_LOGW(TAG, "Not enough free bytes in ring buffer to store incoming audio data.");
       }
       this->ring_buffer_->write((void *) data.data(), data.size());
-      this->ring_buffer_stats_free_ += this->ring_buffer_->free();
-      this->ring_buffer_stats_free_count_++;
+      this->ring_buffer_stats_free_ = std::min(this->ring_buffer_->free(), this->ring_buffer_stats_free_);
     }
   });
 
@@ -165,15 +164,14 @@ void SoundLevelMeter::task(void *param) {
         if (process_count >= this_->ms_to_frames(this_->update_interval_ms_)) {
           auto cpu_util = float(process_time) / 1000 / this_->update_interval_ms_;
           auto rb_size = this_->ring_buffer_->available() + this_->ring_buffer_->free();
-          auto rb_util =
-              (rb_size - float(this_->ring_buffer_stats_free_) / this_->ring_buffer_stats_free_count_) / rb_size;
+          auto rb_util = float(rb_size - this_->ring_buffer_stats_free_) / rb_size;
           auto core = xPortGetCoreID();
           this_->defer([cpu_util, rb_util, core]() {
             ESP_LOGD(TAG, "CPU (Core %u) Utilization: %.1f%%, Ring Buffer Utilization: %.1f%%", core, cpu_util * 100,
                      rb_util * 100);
           });
           process_time = process_count = 0;
-          this_->ring_buffer_stats_free_ = this_->ring_buffer_stats_free_count_ = 0;
+          this_->ring_buffer_stats_free_ = SIZE_MAX;
         }
       }
     }
