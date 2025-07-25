@@ -69,7 +69,7 @@ sound_level_meter:
   warmup_interval: 500ms
   task_stack_size: 4096
   task_priority: 2
-  task_core: 0 # or you can try core 1
+  task_core: 1
   mic_sensitivity: -26dB
   mic_sensitivity_ref: 94dB
   offset: 0dB
