@@ -74,7 +74,7 @@ void SoundLevelMeter::setup() {
     if (this->ring_buffer_ != nullptr) {
       size_t bytes_free = this->ring_buffer_->free();
       if (bytes_free < data.size()) {
-        ESP_LOGW(TAG, "Not enough free bytes in ring buffer to store incoming audio data.");
+        defer([] { ESP_LOGW(TAG, "Not enough free bytes in ring buffer to store incoming audio data."); });
       }
       this->ring_buffer_->write((void *) data.data(), data.size());
       this->ring_buffer_stats_free_ = std::min(this->ring_buffer_->free(), this->ring_buffer_stats_free_);
