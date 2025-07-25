@@ -339,7 +339,7 @@ udp:
   port: 1234
 ```
 
-On the receiving end, you can use ffplay or mpv to play back the audio:
+On the receiving end, you can use ffplay or mpv to play back and listen to the audio in real time:
 
 ```bash
 ffplay -fflags nobuffer -flags low_delay -f s16le -ar 48000 -ch_layout mono -probesize 32 -analyzeduration 0 -af volume=30dB udp://0.0.0.0:1234
