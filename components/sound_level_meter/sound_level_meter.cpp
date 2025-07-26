@@ -485,7 +485,10 @@ template<typename T> void BufferStack<T>::pop() {
   this->index_--;
 }
 
-template<typename T> void BufferStack<T>::reset() { this->index_ = 0; }
+template<typename T> void BufferStack<T>::reset() {
+  this->index_ = 0;
+  this->current().resize(this->buffer_size_);
+}
 
 template<typename T> BufferStack<T>::operator std::vector<T> &() { return this->current(); }
 
