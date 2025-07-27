@@ -69,7 +69,8 @@ class SoundLevelMeter : public Component {
   bool is_high_freq_{false};
   bool is_auto_start_{true};
   HighFrequencyLoopRequester high_freq_;
-  std::unique_ptr<RingBuffer> ring_buffer_;
+  std::shared_ptr<RingBuffer> ring_buffer_;
+  std::weak_ptr<RingBuffer> ring_buffer_weak_;
   size_t ring_buffer_stats_free_{SIZE_MAX};
   TaskHandle_t task_handle_{nullptr};
 

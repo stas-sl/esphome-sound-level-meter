@@ -71,13 +71,14 @@ void SoundLevelMeter::setup() {
   this->sort_sensors();
 
   this->microphone_source_->add_data_callback([this](const std::vector<uint8_t> &data) {
-    if (this->ring_buffer_ != nullptr) {
-      size_t bytes_free = this->ring_buffer_->free();
+    auto ring_buffer = this->ring_buffer_weak_.lock();
+    if (ring_buffer) {
+      size_t bytes_free = ring_buffer->free();
       if (bytes_free < data.size()) {
         defer([] { ESP_LOGW(TAG, "Not enough free bytes in ring buffer to store incoming audio data."); });
       }
-      this->ring_buffer_->write((void *) data.data(), data.size());
-      this->ring_buffer_stats_free_ = std::min(this->ring_buffer_->free(), this->ring_buffer_stats_free_);
+      ring_buffer->write((void *) data.data(), data.size());
+      this->ring_buffer_stats_free_ = std::min(ring_buffer->free(), this->ring_buffer_stats_free_);
     }
   });
 
@@ -133,6 +134,7 @@ void SoundLevelMeter::task(void *param) {
   this_->is_running_ = true;
   {
     this_->ring_buffer_ = RingBuffer::create(this_->get_audio_stream_info().ms_to_bytes(this_->ring_buffer_size_ms_));
+    this_->ring_buffer_weak_ = this_->ring_buffer_;
     BufferStack<float> buffers(this_->ms_to_frames(AUDIO_BUFFER_DURATION_MS));
 
     this_->reset();
