@@ -88,27 +88,30 @@ void SoundLevelMeter::setup() {
 }
 
 void SoundLevelMeter::loop() {
-  if (!this->defer_queue_.empty()) {
+  // Process no more than 5 items per loop iteration.
+  // When there are many sensors with short update intervals,
+  // a large number of state updates (publish_state) may be queued.
+  // Publishing state is a relatively expensive operation, so calling
+  // it more than 10–20 times per iteration could trigger a warning
+  // that the component is taking too long to operate. Therefore, we
+  // limit the number of updates per iteration. The loop runs approximately
+  // 100 times per second, so any remaining items will be processed
+  // in the next iteration. Processing only one item per iteration is too
+  // restrictive, as in extreme cases with many updates - say,
+  // 100 per second - we might hit performance limits. Thus, we set a maximum
+  // of 5 items per iteration, allowing up to 500 sensor updates per second
+  // in theory, which should be more than sufficient for most scenarios.
+  std::vector<std::function<void()>> tasks;
+  {
+    uint32_t max_items = 5;
     std::lock_guard<std::mutex> lock(this->defer_mutex_);
-    // Process no more than 5 items per loop iteration.
-    // When there are many sensors with short update intervals,
-    // a large number of state updates (publish_state) may be queued.
-    // Publishing state is a relatively expensive operation, so calling
-    // it more than 10–20 times per iteration could trigger a warning
-    // that the component is taking too long to operate. Therefore, we
-    // limit the number of updates per iteration. The loop runs approximately
-    // 100 times per second, so any remaining items will be processed
-    // in the next iteration. Processing only one item per iteration is too
-    // restrictive, as in extreme cases with many updates - say,
-    // 100 per second - we might hit performance limits. Thus, we set a maximum
-    // of 5 items per iteration, allowing up to 500 sensor updates per second
-    // in theory, which should be more than sufficient for most scenarios.
-    uint32_t max_items = std::min(this->defer_queue_.size(), (size_t) 5);
-    for (int i = 0; i < max_items; i++) {
-      auto &f = this->defer_queue_.front();
-      f();
+    for (int i = 0; i < max_items && !this->defer_queue_.empty(); i++) {
+      tasks.push_back(std::move(this->defer_queue_.front()));
       this->defer_queue_.pop_front();
     }
+  }
+  for (auto &f : tasks) {
+    f();
   }
 }
 
