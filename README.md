@@ -1,7 +1,7 @@
 # ESPHome Sound Level Meter [![CI](https://github.com/stas-sl/esphome-sound-level-meter/actions/workflows/ci.yaml/badge.svg)](https://github.com/stas-sl/esphome-sound-level-meter/actions/workflows/ci.yaml)
 
 > [!NOTE]
-> This component was originally developed a few years ago when ESPHome lacked official support for I2S audio. Since then, ESPHome has introduced its own official I2S [microphone](https://esphome.io/components/microphone/i2s_audio.html) and [sound_level](https://esphome.io/components/sensor/sound_level.html) components. For basic sound level measurements, I recommend using these official components, as they offer better compatibility with newer ESP32 variants. However, my component remains useful if you require advanced features like A/C-weighting or custom microphone equalization, which are not available in the official implementations yet.
+> This component was originally developed a few years ago, back when ESPHome didn’t yet offer official support for I2S audio. Since then, ESPHome has introduced its own [I2S microphone](https://esphome.io/components/microphone/i2s_audio.html) and [sound level](https://esphome.io/components/sensor/sound_level.html) components. These may be sufficient for basic sound level measurements. However, if you need more advanced features - such as A/C-weighting or support for custom IIR filters - you can use my component instead.
 
 This component was made to measure environmental noise levels (Leq, Lmin, Lmax, Lpeak) with different frequency weightings over configured time intervals. It is heavily based on awesome work by Ivan Kostoski: [esp32-i2s-slm](https://github.com/ikostoski/esp32-i2s-slm) (his [hackaday.io project](https://hackaday.io/project/166867-esp32-i2s-slm)).
 
@@ -264,11 +264,11 @@ For real-time visualization, I'm using web server number/slider controls to disp
 
 With 10 x 6 = 60 SOS filters, the component uses about 60-70% of the CPU, and I assume the web server also consumes some CPU power to send approximately 100 messages per second. So, this is quite a CPU-intensive task. I chose 6th-order filters somewhat arbitrarily; you could experiment with lower-order filters, which might meet your needs while using less CPU power.
 
-https://github.com/user-attachments/assets/904a2a96-0c16-4797-9587-2558cc0c70f8
+https://github.com/user-attachments/assets/6283a8a9-d44d-40e2-992b-8ea2da0ff56e
 
 While this example serves as a stress test, you could also use it to monitor different frequencies over longer time intervals with less frequent updates.
 
-<img width="1189" src="https://github.com/user-attachments/assets/8a23774d-46f2-4162-8504-4e46bfe50a80">
+<img width="1193" src="https://github.com/user-attachments/assets/b811edf6-a4dd-4df8-a448-ae9c9b918505">
 
 ## Filter design (math)
 
@@ -358,6 +358,12 @@ mpv udp://0.0.0.0:1234 -v --demuxer=rawaudio --demuxer-rawaudio-channels=1 --dem
 ```
 
 ffplay even displays by default nice spectrogram of playing audio.
+
+Or to save it to a file, you can use netcat:
+
+```bash
+nc -u -l 1234 > mic_data.raw
+```
 
 ## References
 
