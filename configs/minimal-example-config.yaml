@@ -7,8 +7,9 @@ external_components:
 
 esp32:
   board: esp32dev
+  cpu_frequency: 240MHz
   framework:
-    type: arduino
+    type: esp-idf
 
 logger:
   level: DEBUG

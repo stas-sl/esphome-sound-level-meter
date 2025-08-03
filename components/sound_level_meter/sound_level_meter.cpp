@@ -439,11 +439,21 @@ SOS_Filter::SOS_Filter(std::initializer_list<std::initializer_list<float>> &&coe
     std::copy(row.begin(), row.end(), coeffs_[i++].begin());
 }
 
-// direct form 2 transposed
 void SOS_Filter::process(std::vector<float> &data) {
   int n = data.size();
   int m = this->coeffs_.size();
   for (int j = 0; j < m; j++) {
+#ifdef USE_ESP_DSP  // esp-dsp uses direct form 2
+#if defined(USE_ESP32_VARIANT_ESP32)
+    dsps_biquad_f32_ae32(&data[0], &data[0], data.size(), &this->coeffs_[j][0], &this->state_[j][0]);
+#elif defined(USE_ESP32_VARIANT_ESP32S3)
+    dsps_biquad_f32_aes3(&data[0], &data[0], data.size(), &this->coeffs_[j][0], &this->state_[j][0]);
+#elif defined(USE_ESP32_VARIANT_ESP32P4)
+    dsps_biquad_f32_arp4(&data[0], &data[0], data.size(), &this->coeffs_[j][0], &this->state_[j][0]);
+#else
+    dsps_biquad_f32_ansi(&data[0], &data[0], data.size(), &this->coeffs_[j][0], &this->state_[j][0]);
+#endif
+#else  // I'm using direct form 2 transposed, which should be a bit more numerically stable
     for (int i = 0; i < n; i++) {
       // y[i] = b0 * x[i] + s0
       float yi = this->coeffs_[j][0] * data[i] + this->state_[j][0];
@@ -454,6 +464,7 @@ void SOS_Filter::process(std::vector<float> &data) {
 
       data[i] = yi;
     }
+#endif
   }
 }
 

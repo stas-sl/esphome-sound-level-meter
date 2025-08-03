@@ -5,6 +5,7 @@ import esphome.config_validation as cv
 from esphome import automation, core
 from esphome.automation import maybe_simple_id
 from esphome.components import sensor, microphone
+from esphome.components.esp32 import add_idf_component
 from esphome.const import (
     CONF_ID,
     CONF_SENSORS,
@@ -62,6 +63,7 @@ CONF_OFFSET = "offset"
 CONF_HIGH_FREQ = "high_freq"
 CONF_DSP_FILTERS = "dsp_filters"
 CONF_AUTO_START = "auto_start"
+CONF_USE_ESP_DSP = "use_esp_dsp"
 
 ICON_WAVEFORM = "mdi:waveform"
 
@@ -147,28 +149,42 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
     }
 )
 
-CONFIG_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(): cv.declare_id(SoundLevelMeter),
-        cv.Optional(CONF_MICROPHONE, default={}): microphone.microphone_source_schema(
-            min_bits_per_sample=16,
-            max_bits_per_sample=32,
-        ),
-        cv.Optional(CONF_UPDATE_INTERVAL, default="60s"): cv.positive_time_period_milliseconds,
-        cv.Optional(CONF_AUTO_START, default=True): cv.boolean,
-        cv.Optional(CONF_HIGH_FREQ, default=False): cv.boolean,
-        cv.Optional(CONF_RING_BUFFER_SIZE, default="100ms"): cv.positive_time_period_milliseconds,
-        cv.Optional(CONF_WARMUP_INTERVAL, default="0ms"): cv.positive_time_period_milliseconds,
-        cv.Optional(CONF_TASK_STACK_SIZE, default=4096): cv.positive_not_null_int,
-        cv.Optional(CONF_TASK_PRIORITY, default=2): cv.uint8_t,
-        cv.Optional(CONF_TASK_CORE, default=1): cv.int_range(0, 1),
-        cv.Optional(CONF_MIC_SENSITIVITY): cv.decibel,
-        cv.Optional(CONF_MIC_SENSITIVITY_REF): cv.decibel,
-        cv.Optional(CONF_OFFSET): cv.decibel,
-        cv.Optional(CONF_DSP_FILTERS, default=[]): [CONFIG_DSP_FILTER_SCHEMA],
-        cv.Optional(CONF_SENSORS, default=[]): [CONFIG_SENSOR_SCHEMA],
-    }
-).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.declare_id(SoundLevelMeter),
+            cv.Optional(
+                CONF_MICROPHONE, default={}
+            ): microphone.microphone_source_schema(
+                min_bits_per_sample=16,
+                max_bits_per_sample=32,
+            ),
+            cv.Optional(
+                CONF_UPDATE_INTERVAL, default="60s"
+            ): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_AUTO_START, default=True): cv.boolean,
+            cv.Optional(CONF_HIGH_FREQ, default=False): cv.boolean,
+            cv.Optional(
+                CONF_RING_BUFFER_SIZE, default="100ms"
+            ): cv.positive_time_period_milliseconds,
+            cv.Optional(
+                CONF_WARMUP_INTERVAL, default="0ms"
+            ): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_TASK_STACK_SIZE, default=4096): cv.positive_not_null_int,
+            cv.Optional(CONF_TASK_PRIORITY, default=2): cv.uint8_t,
+            cv.Optional(CONF_TASK_CORE, default=1): cv.int_range(0, 1),
+            cv.Optional(CONF_MIC_SENSITIVITY): cv.decibel,
+            cv.Optional(CONF_MIC_SENSITIVITY_REF): cv.decibel,
+            cv.Optional(CONF_OFFSET): cv.decibel,
+            cv.Optional(CONF_DSP_FILTERS, default=[]): [CONFIG_DSP_FILTER_SCHEMA],
+            cv.Optional(CONF_SENSORS, default=[]): [CONFIG_SENSOR_SCHEMA],
+            cv.Optional(CONF_USE_ESP_DSP, default=False): cv.All(
+                cv.boolean, cv.only_with_esp_idf
+            ),
+        }
+    ).extend(cv.COMPONENT_SCHEMA),
+    cv.only_on_esp32,
+)
 
 SOUND_LEVEL_METER_ACTION_SCHEMA = maybe_simple_id(
     {cv.GenerateID(): cv.use_id(SoundLevelMeter)}
@@ -223,6 +239,9 @@ async def to_code(config):
         cg.add(var.set_mic_sensitivity_ref(config[CONF_MIC_SENSITIVITY_REF]))
     if CONF_OFFSET in config:
         cg.add(var.set_offset(config[CONF_OFFSET]))
+    if config[CONF_USE_ESP_DSP]:
+        add_idf_component(name="espressif/esp-dsp", ref="1.7.0")
+        cg.add_define("USE_ESP_DSP")
 
     for fc in config[CONF_DSP_FILTERS]:
         await add_dsp_filter(fc, var)

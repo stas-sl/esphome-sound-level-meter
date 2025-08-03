@@ -7,8 +7,9 @@ external_components:
 
 esp32:
   board: esp32dev
+  cpu_frequency: 240MHz
   framework:
-    type: arduino
+    type: esp-idf
 
 logger:
   level: DEBUG
@@ -102,17 +103,17 @@ interval:
                   X-Sensor: esp32-...  # replace with your sensor ID
                   Content-Type: application/json
                 json: |-
-                    root["software_version"] = "ESPHome " ESPHOME_VERSION;
-                    auto values = root.createNestedArray("sensordatavalues");
+                  root["software_version"] = "ESPHome " ESPHOME_VERSION;
+                  auto values = root["sensordatavalues"].to<JsonArray>();
 
-                    auto LA_eq = values.createNestedObject();
-                    LA_eq["value_type"] = "noise_LAeq";
-                    LA_eq["value"] = id(LAeq_1min).state;
+                  auto LA_eq = values.add<JsonObject>();
+                  LA_eq["value_type"] = "noise_LAeq";
+                  LA_eq["value"] = id(LAeq_1min).state;
 
-                    auto LA_min = values.createNestedObject();
-                    LA_min["value_type"] = "noise_LA_min";
-                    LA_min["value"] = id(LAmin_125ms_1min).state;
+                  auto LA_min = values.add<JsonObject>();
+                  LA_min["value_type"] = "noise_LA_min";
+                  LA_min["value"] = id(LAmin_125ms_1min).state;
 
-                    auto LA_max = values.createNestedObject();
-                    LA_max["value_type"] = "noise_LA_max";
-                    LA_max["value"] = id(LAmax_125ms_1min).state;
+                  auto LA_max = values.add<JsonObject>();
+                  LA_max["value_type"] = "noise_LA_max";
+                  LA_max["value"] = id(LAmax_125ms_1min).state;

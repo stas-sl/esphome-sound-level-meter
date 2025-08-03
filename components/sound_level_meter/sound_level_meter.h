@@ -12,6 +12,10 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/microphone/microphone_source.h"
 
+#ifdef USE_ESP_DSP
+#include "dsps_biquad.h"
+#endif
+
 namespace esphome::sound_level_meter {
 class SoundLevelMeterSensor;
 class Filter;

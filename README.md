@@ -83,6 +83,16 @@ sound_level_meter:
   # additional offset if needed
   offset: 0dB                   # default: empty
 
+  # if you have many filters, you might consider using the IIR filter 
+  # implementation from the esp-dsp library. it's written in assembly 
+  # and includes several optimized versions, particularly performant on 
+  # ESP32 or ESP32-S3, and can provide up to 2x faster processing compared 
+  # to my C++ implementation. esp-dsp version uses direct form II, whereas 
+  # the C++ version uses the direct form II transposed. the latter may offer 
+  # slightly better numerical stability, but in most cases, the difference 
+  # is likely negligible.
+  use_esp_dsp: false            # default: false
+
   # under dsp_filters section you can define multiple filters,
   # which can be referenced later by each sensor
   
