@@ -11,7 +11,7 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     env:
-      ESPHOME_VERSION: 2025.7.4
+      ESPHOME_VERSION: 2025.9.0
       PLATFORMIO_LIBDEPS_DIR: ~/.platformio/libdeps
     strategy:
       fail-fast: false

@@ -59,9 +59,14 @@ void SoundLevelMeter::dump_config() {
   ESP_LOGCONFIG(TAG, "  Task Stack Size: %lu", this->task_stack_size_);
   ESP_LOGCONFIG(TAG, "  Task Priority: %u", this->task_priority_);
   ESP_LOGCONFIG(TAG, "  Task Core: %u", this->task_core_);
-  ESP_LOGCONFIG(TAG, "  High Freq: %s", YESNO(this->is_high_freq_));
   ESP_LOGCONFIG(TAG, "  Auto Start: %s", YESNO(this->is_auto_start_));
-  LOG_UPDATE_INTERVAL(this);
+  if (this->update_interval_ms_ == SCHEDULER_DONT_RUN) {
+    ESP_LOGCONFIG(TAG, "  Update Interval: never");
+  } else if (this->update_interval_ms_ < 100) {
+    ESP_LOGCONFIG(TAG, "  Update Interval: %.3fs", this->update_interval_ms_ / 1000.0f);
+  } else {
+    ESP_LOGCONFIG(TAG, "  Update Interval: %.1fs", this->update_interval_ms_ / 1000.0f);
+  }
   ESP_LOGCONFIG(TAG, "Sensors:");
   for (auto *s : this->sensors_)
     LOG_SENSOR("    ", "Sound Pressure Level", s);
