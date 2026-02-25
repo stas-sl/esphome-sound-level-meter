@@ -298,9 +298,7 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 
 ## Supported platforms
 
-Tested with ESPHome version 2025.9.0, platforms:
-- [x] ESP32 (Arduino v3.1.3, ESP-IDF v5.3.2)
-- [x] ESP32-IDF (ESP-IDF v5.3.2)
+Tested with ESPHome version 2026.2.1 (ESP-IDF v5.5.2)
 
 ## Troubleshooting
 
