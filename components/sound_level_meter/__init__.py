@@ -4,7 +4,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation, core
 from esphome.automation import maybe_simple_id
-from esphome.components import sensor, microphone
+from esphome.components import sensor, microphone, ota
 from esphome.components.esp32 import add_idf_component
 from esphome.const import (
     CONF_ID,
@@ -248,6 +248,8 @@ async def to_code(config):
 
     for sc in config[CONF_SENSORS]:
         await add_sensor(sc, var)
+    
+    ota.request_ota_state_listeners()
 
 
 @automation.register_action(

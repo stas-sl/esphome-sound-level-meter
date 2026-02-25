@@ -12,6 +12,10 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/microphone/microphone_source.h"
 
+#ifdef USE_OTA_STATE_LISTENER
+#include "esphome/components/ota/ota_backend.h"
+#endif
+
 #ifdef USE_ESP_DSP
 #include "dsps_biquad.h"
 #endif
@@ -21,7 +25,12 @@ class SoundLevelMeterSensor;
 class Filter;
 template<typename T> class BufferStack;
 
-class SoundLevelMeter : public Component {
+class SoundLevelMeter : public Component
+#ifdef USE_OTA_STATE_LISTENER
+    ,
+                        public ota::OTAGlobalStateListener
+#endif
+{
   friend class SoundLevelMeterSensor;
   friend class SoundLevelMeterSensorMax;
   friend class SoundLevelMeterSensorMin;
@@ -53,6 +62,10 @@ class SoundLevelMeter : public Component {
   void stop();
   bool is_running();
 
+#ifdef USE_OTA_STATE_LISTENER
+  void on_ota_global_state(ota::OTAState state, float progress, uint8_t error, ota::OTAComponent *comp) override;
+#endif
+
  protected:
   microphone::MicrophoneSource *microphone_source_{nullptr};
   std::vector<Filter *> dsp_filters_;
@@ -69,6 +82,7 @@ class SoundLevelMeter : public Component {
   std::mutex defer_mutex_;
   uint32_t update_interval_ms_{60000};
   bool is_running_{false};
+  bool was_running_before_ota_{false};
   bool is_pending_stop_{false};
   bool is_high_freq_{false};
   bool is_auto_start_{true};

@@ -94,6 +94,10 @@ void SoundLevelMeter::setup() {
   if (this->is_auto_start_) {
     this->start();
   }
+
+#ifdef USE_OTA_STATE_LISTENER
+  ota::get_global_ota_callback()->add_global_state_listener(this);
+#endif
 }
 
 void SoundLevelMeter::loop() {
@@ -140,6 +144,19 @@ void SoundLevelMeter::stop() {
 }
 
 bool SoundLevelMeter::is_running() { return this->is_running_; }
+
+#ifdef USE_OTA_STATE_LISTENER
+void SoundLevelMeter::on_ota_global_state(ota::OTAState state, float progress, uint8_t error, ota::OTAComponent *comp) {
+  if (state == ota::OTA_STARTED) {
+    this->was_running_before_ota_ = this->is_running();
+    this->stop();
+  } else if (state == ota::OTA_ERROR || state == ota::OTA_ABORT) {
+    if (this->was_running_before_ota_) {
+      this->start();
+    }
+  }
+}
+#endif
 
 void SoundLevelMeter::task(void *param) {
   SoundLevelMeter *this_ = reinterpret_cast<SoundLevelMeter *>(param);
