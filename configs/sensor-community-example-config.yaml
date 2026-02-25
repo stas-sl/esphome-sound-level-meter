@@ -14,14 +14,6 @@ esp32:
 logger:
   level: DEBUG
 
-api:
-  password: !secret api_password
-  reboot_timeout: 0s
-
-ota:
-  platform: esphome
-  password: !secret ota_password
-
 http_request:
   verify_ssl: false
   timeout: 5s
