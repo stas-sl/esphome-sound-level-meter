@@ -7,24 +7,17 @@ external_components:
 
 esp32:
   board: esp32dev
+  cpu_frequency: 240MHz
   framework:
-    type: arduino
+    type: esp-idf
 
 logger:
   level: DEBUG
 
-api:
-  password: !secret api_password
-  reboot_timeout: 0s
-
-ota:
-  platform: esphome
-  password: !secret ota_password
-
 http_request:
   verify_ssl: false
   timeout: 5s
-  watchdog_timeout: 10s
+  watchdog_timeout: 20s
 
 wifi:
   ssid: !secret wifi_ssid
@@ -34,50 +27,59 @@ wifi:
 web_server:
   port: 80
 
-i2s:
-  ws_pin: 18
-  bck_pin: 23
-  din_pin: 19
-  sample_rate: 48000
-  bits_per_sample: 32
-  mclk_multiple: 256
-  dma_buf_count: 8
-  dma_buf_len: 256
-  use_apll: true
-  bits_shift: 8
-  channel: right
+i2s_audio: 
+  i2s_lrclk_pin: GPIO18
+  i2s_bclk_pin: GPIO23
+
+microphone:
+  - platform: i2s_audio
+    id: mic
+    adc_type: external
+    i2s_din_pin: GPIO19
+    channel: left
+    sample_rate: 48000
+    bits_per_sample: 32bit
+    i2s_mode: primary
 
 sound_level_meter:
+  microphone: 
+    microphone: mic
+    bits_per_sample: 32
+
   update_interval: 150s  # to match original sensor.community firmware settings
   warmup_interval: 500ms
   mic_sensitivity: -26dB
   mic_sensitivity_ref: 94dB
-  groups:
-    - filters:
-        - type: sos
-          coeffs:
-            # A-weighting:
-            #       b0           b1            b2             a1            a2
-            - [0.16999495, 0.741029, 0.52548885, -0.11321865, -0.056549273]
-            - [1., -2.00027, 1.0002706, -0.03433284, -0.79215795]
-            - [1., -0.709303, -0.29071867, -1.9822421, 0.9822986]
-      sensors:
-        - type: eq
-          name: LAeq_1min
-          id: LAeq_1min
-          unit_of_measurement: dBA
-        - type: max
-          name: LAmax_125ms_1min
-          id: LAmax_125ms_1min
-          # I believe, previously 35ms was used in DNMS FW,
-          # but later it was changed to 125ms
-          window_size: 125ms
-          unit_of_measurement: dBA
-        - type: min
-          name: LAmin_125ms_1min
-          id: LAmin_125ms_1min
-          window_size: 125ms
-          unit_of_measurement: dBA
+
+  dsp_filters:
+    - id: f_a        # A weighting @ 48kHz
+      type: sos
+      coeffs:
+        #       b0           b1            b2             a1            a2
+        - [ 0.16999495 ,  0.741029   ,  0.52548885 , -0.11321865 , -0.056549273]
+        - [ 1.         , -2.00027    ,  1.0002706  , -0.03433284 , -0.79215795 ]
+        - [ 1.         , -0.709303   , -0.29071867 , -1.9822421  ,  0.9822986  ]
+
+  sensors:
+    - type: eq
+      name: LAeq_1min
+      id: LAeq_1min
+      dsp_filters: [f_a]
+      unit_of_measurement: dBA
+    - type: max
+      name: LAmax_125ms_1min
+      id: LAmax_125ms_1min
+      dsp_filters: [f_a]
+      # I believe, previously 35ms was used in DNMS FW,
+      # but later it was changed to 125ms
+      window_size: 125ms
+      unit_of_measurement: dBA
+    - type: min
+      name: LAmin_125ms_1min
+      id: LAmin_125ms_1min
+      dsp_filters: [f_a]
+      window_size: 125ms
+      unit_of_measurement: dBA
 
 interval:
   - interval: 150s
@@ -93,17 +95,17 @@ interval:
                   X-Sensor: esp32-...  # replace with your sensor ID
                   Content-Type: application/json
                 json: |-
-                    root["software_version"] = "ESPHome " ESPHOME_VERSION;
-                    auto values = root.createNestedArray("sensordatavalues");
+                  root["software_version"] = "ESPHome " ESPHOME_VERSION;
+                  auto values = root["sensordatavalues"].to<JsonArray>();
 
-                    auto LA_eq = values.createNestedObject();
-                    LA_eq["value_type"] = "noise_LAeq";
-                    LA_eq["value"] = id(LAeq_1min).state;
+                  auto LA_eq = values.add<JsonObject>();
+                  LA_eq["value_type"] = "noise_LAeq";
+                  LA_eq["value"] = id(LAeq_1min).state;
 
-                    auto LA_min = values.createNestedObject();
-                    LA_min["value_type"] = "noise_LA_min";
-                    LA_min["value"] = id(LAmin_125ms_1min).state;
+                  auto LA_min = values.add<JsonObject>();
+                  LA_min["value_type"] = "noise_LA_min";
+                  LA_min["value"] = id(LAmin_125ms_1min).state;
 
-                    auto LA_max = values.createNestedObject();
-                    LA_max["value_type"] = "noise_LA_max";
-                    LA_max["value"] = id(LAmax_125ms_1min).state;
+                  auto LA_max = values.add<JsonObject>();
+                  LA_max["value_type"] = "noise_LA_max";
+                  LA_max["value"] = id(LAmax_125ms_1min).state;

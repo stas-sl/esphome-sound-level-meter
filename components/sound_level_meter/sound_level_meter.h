@@ -1,31 +1,46 @@
 #pragma once
 
-#include "esp_timer.h"
 #include <mutex>
-#include <condition_variable>
 #include <algorithm>
-#include "esphome/core/component.h"
-#include "esphome/core/automation.h"
-#include "esphome/components/sensor/sensor.h"
-#include "esphome/components/i2s/i2s.h"
 
-namespace esphome {
-namespace sound_level_meter {
-class SensorGroup;
+#include "esp_timer.h"
+
+#include "esphome/core/automation.h"
+#include "esphome/core/component.h"
+#include "esphome/core/hal.h"
+#include "esphome/core/ring_buffer.h"
+#include "esphome/components/sensor/sensor.h"
+#include "esphome/components/microphone/microphone_source.h"
+
+#ifdef USE_OTA_STATE_LISTENER
+#include "esphome/components/ota/ota_backend.h"
+#endif
+
+#ifdef USE_ESP_DSP
+#include "dsps_biquad.h"
+#endif
+
+namespace esphome::sound_level_meter {
 class SoundLevelMeterSensor;
 class Filter;
+template<typename T> class BufferStack;
 
-class SoundLevelMeter : public Component {
+class SoundLevelMeter : public Component
+#ifdef USE_OTA_STATE_LISTENER
+    ,
+                        public ota::OTAGlobalStateListener
+#endif
+{
   friend class SoundLevelMeterSensor;
+  friend class SoundLevelMeterSensorMax;
+  friend class SoundLevelMeterSensorMin;
 
  public:
   void set_update_interval(uint32_t update_interval);
   uint32_t get_update_interval();
-  void set_buffer_size(uint32_t buffer_size);
-  uint32_t get_buffer_size();
-  uint32_t get_sample_rate();
-  void set_i2s(i2s::I2SComponent *i2s);
-  void add_group(SensorGroup *group);
+  void set_ring_buffer_size(uint32_t ring_buffer_size);
+  uint32_t get_ring_buffer_size();
+  void set_microphone_source(microphone::MicrophoneSource *microphone_source);
   void set_warmup_interval(uint32_t warmup_interval);
   void set_task_stack_size(uint32_t task_stack_size);
   void set_task_priority(uint8_t task_priority);
@@ -36,68 +51,75 @@ class SoundLevelMeter : public Component {
   optional<float> get_mic_sensitivity_ref();
   void set_offset(optional<float> offset);
   optional<float> get_offset();
+  void set_is_high_freq(bool is_high_freq);
+  void set_is_auto_start(bool is_auto_start);
+  void add_sensor(SoundLevelMeterSensor *sensor);
+  void add_dsp_filter(Filter *dsp_filter);
   virtual void setup() override;
   virtual void loop() override;
   virtual void dump_config() override;
-  void turn_on();
-  void turn_off();
-  void toggle();
-  bool is_on();
+  void start();
+  void stop();
+  bool is_running();
+
+#ifdef USE_OTA_STATE_LISTENER
+  void on_ota_global_state(ota::OTAState state, float progress, uint8_t error, ota::OTAComponent *comp) override;
+#endif
 
  protected:
-  i2s::I2SComponent *i2s_{nullptr};
-  std::vector<SensorGroup *> groups_;
-  size_t buffer_size_{256};
-  uint32_t warmup_interval_{500};
+  microphone::MicrophoneSource *microphone_source_{nullptr};
+  std::vector<Filter *> dsp_filters_;
+  std::vector<SoundLevelMeterSensor *> sensors_;
+  size_t ring_buffer_size_ms_{256};
+  uint32_t warmup_interval_ms_{500};
   uint32_t task_stack_size_{1024};
   uint8_t task_priority_{1};
   uint8_t task_core_{1};
   optional<float> mic_sensitivity_{};
   optional<float> mic_sensitivity_ref_{};
   optional<float> offset_{};
-  std::queue<std::function<void()>> defer_queue_;
+  std::deque<std::function<void()>> defer_queue_;
   std::mutex defer_mutex_;
-  uint32_t update_interval_{60000};
-  bool is_on_{true};
-  std::mutex on_mutex_;
-  std::condition_variable on_cv_;
+  uint32_t update_interval_ms_{60000};
+  bool is_running_{false};
+  bool was_running_before_ota_{false};
+  bool is_pending_stop_{false};
+  bool is_high_freq_{false};
+  bool is_auto_start_{true};
+  HighFrequencyLoopRequester high_freq_;
+  std::shared_ptr<RingBuffer> ring_buffer_;
+  std::weak_ptr<RingBuffer> ring_buffer_weak_;
+  size_t ring_buffer_stats_free_{SIZE_MAX};
+  TaskHandle_t task_handle_{nullptr};
 
-  static void task(void *param);
+  audio::AudioStreamInfo get_audio_stream_info() const;
+  uint32_t ms_to_frames(uint32_t ms);
+  void sort_sensors();
+  size_t read_samples(std::vector<float> &data, TickType_t ticks_to_wait = portMAX_DELAY);
+  void process(BufferStack<float> &buffers);
   // epshome's scheduler is not thred safe, so we have to use custom thread safe implementation
   // to execute sensor updates in main loop
   void defer(std::function<void()> &&f);
   void reset();
-};
 
-class SensorGroup {
- public:
-  void set_parent(SoundLevelMeter *parent);
-  void add_sensor(SoundLevelMeterSensor *sensor);
-  void add_group(SensorGroup *group);
-  void add_filter(Filter *filter);
-  void process(std::vector<float> &buffer);
-  void dump_config(const char *prefix);
-  void reset();
-
- protected:
-  SoundLevelMeter *parent_{nullptr};
-  std::vector<SensorGroup *> groups_;
-  std::vector<SoundLevelMeterSensor *> sensors_;
-  std::vector<Filter *> filters_;
+  static void task(void *param);
 };
 
 class SoundLevelMeterSensor : public sensor::Sensor {
-  friend class SensorGroup;
+  friend SoundLevelMeter;
 
  public:
   void set_parent(SoundLevelMeter *parent);
   void set_update_interval(uint32_t update_interval);
+  void add_dsp_filter(Filter *dsp_filter);
   virtual void process(std::vector<float> &buffer) = 0;
   void defer_publish_state(float state);
 
  protected:
   SoundLevelMeter *parent_{nullptr};
+  std::vector<Filter *> dsp_filters_;
   uint32_t update_samples_{0};
+  uint32_t update_interval_ms_{60000};
   float adjust_dB(float dB, bool is_rms = true);
 
   virtual void reset() = 0;
@@ -154,7 +176,7 @@ class SoundLevelMeterSensorPeak : public SoundLevelMeterSensor {
 };
 
 class Filter {
-  friend class SensorGroup;
+  friend SoundLevelMeter;
 
  public:
   virtual void process(std::vector<float> &data) = 0;
@@ -175,35 +197,40 @@ class SOS_Filter : public Filter {
   virtual void reset() override;
 };
 
-template<typename... Ts> class TurnOnAction : public Action<Ts...> {
+template<typename T> class BufferStack {
  public:
-  explicit TurnOnAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
+  BufferStack(uint32_t buffer_size);
+  std::vector<T> &current();
+  void push();
+  void pop();
+  void reset();
+  operator std::vector<T> &();
 
-  void play(Ts... x) override { this->sound_level_meter_->turn_on(); }
+ private:
+  uint32_t buffer_size_;
+  uint32_t max_depth_;
+  uint32_t index_{0};
+  std::vector<std::vector<T>> buffers_;
+};
+
+template<typename... Ts> class StartAction : public Action<Ts...> {
+ public:
+  explicit StartAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
+
+  void play(Ts... x) override { this->sound_level_meter_->start(); }
 
  protected:
   SoundLevelMeter *sound_level_meter_;
 };
 
-template<typename... Ts> class TurnOffAction : public Action<Ts...> {
+template<typename... Ts> class StopAction : public Action<Ts...> {
  public:
-  explicit TurnOffAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
+  explicit StopAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
 
-  void play(Ts... x) override { this->sound_level_meter_->turn_off(); }
+  void play(Ts... x) override { this->sound_level_meter_->stop(); }
 
  protected:
   SoundLevelMeter *sound_level_meter_;
 };
 
-template<typename... Ts> class ToggleAction : public Action<Ts...> {
- public:
-  explicit ToggleAction(SoundLevelMeter *sound_level_meter) : sound_level_meter_(sound_level_meter) {}
-
-  void play(Ts... x) override { this->sound_level_meter_->toggle(); }
-
- protected:
-  SoundLevelMeter *sound_level_meter_;
-};
-
-}  // namespace sound_level_meter
-}  // namespace esphome
+}  // namespace esphome::sound_level_meter
