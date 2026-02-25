@@ -178,9 +178,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_OFFSET): cv.decibel,
             cv.Optional(CONF_DSP_FILTERS, default=[]): [CONFIG_DSP_FILTER_SCHEMA],
             cv.Optional(CONF_SENSORS, default=[]): [CONFIG_SENSOR_SCHEMA],
-            cv.Optional(CONF_USE_ESP_DSP, default=False): cv.All(
-                cv.boolean
-            ),
+            cv.Optional(CONF_USE_ESP_DSP, default=False): cv.All(cv.boolean),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.only_on_esp32,
@@ -248,7 +246,7 @@ async def to_code(config):
 
     for sc in config[CONF_SENSORS]:
         await add_sensor(sc, var)
-    
+
     ota.request_ota_state_listeners()
 
 
