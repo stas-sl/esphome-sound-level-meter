@@ -179,7 +179,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_DSP_FILTERS, default=[]): [CONFIG_DSP_FILTER_SCHEMA],
             cv.Optional(CONF_SENSORS, default=[]): [CONFIG_SENSOR_SCHEMA],
             cv.Optional(CONF_USE_ESP_DSP, default=False): cv.All(
-                cv.boolean, cv.only_with_esp_idf
+                cv.boolean
             ),
         }
     ).extend(cv.COMPONENT_SCHEMA),
