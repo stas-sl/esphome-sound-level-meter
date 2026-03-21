@@ -13,7 +13,7 @@ from esphome.const import (
     CONF_UPDATE_INTERVAL,
     CONF_TYPE,
     UNIT_DECIBEL,
-    STATE_CLASS_MEASUREMENT
+    STATE_CLASS_MEASUREMENT,
 )
 
 CODEOWNERS = ["@stas-sl"]
@@ -23,12 +23,21 @@ MULTI_CONF = True
 
 sound_level_meter_ns = cg.esphome_ns.namespace("sound_level_meter")
 SoundLevelMeter = sound_level_meter_ns.class_("SoundLevelMeter", cg.Component)
-SoundLevelMeterSensor = sound_level_meter_ns.class_("SoundLevelMeterSensor", sensor.Sensor)
-SoundLevelMeterSensorEq = sound_level_meter_ns.class_("SoundLevelMeterSensorEq", SoundLevelMeterSensor, sensor.Sensor)
-SoundLevelMeterSensorMax = sound_level_meter_ns.class_("SoundLevelMeterSensorMax", SoundLevelMeterSensor, sensor.Sensor)
-SoundLevelMeterSensorMin = sound_level_meter_ns.class_("SoundLevelMeterSensorMin", SoundLevelMeterSensor, sensor.Sensor)
+SoundLevelMeterSensor = sound_level_meter_ns.class_(
+    "SoundLevelMeterSensor", sensor.Sensor
+)
+SoundLevelMeterSensorEq = sound_level_meter_ns.class_(
+    "SoundLevelMeterSensorEq", SoundLevelMeterSensor, sensor.Sensor
+)
+SoundLevelMeterSensorMax = sound_level_meter_ns.class_(
+    "SoundLevelMeterSensorMax", SoundLevelMeterSensor, sensor.Sensor
+)
+SoundLevelMeterSensorMin = sound_level_meter_ns.class_(
+    "SoundLevelMeterSensorMin", SoundLevelMeterSensor, sensor.Sensor
+)
 SoundLevelMeterSensorPeak = sound_level_meter_ns.class_(
-    "SoundLevelMeterSensorPeak", SoundLevelMeterSensor, sensor.Sensor)
+    "SoundLevelMeterSensorPeak", SoundLevelMeterSensor, sensor.Sensor
+)
 SensorGroup = sound_level_meter_ns.class_("SensorGroup")
 Filter = sound_level_meter_ns.class_("Filter")
 SOS_Filter = sound_level_meter_ns.class_("SOS_Filter", Filter)
@@ -64,48 +73,54 @@ CONFIG_SENSOR_SCHEMA = cv.typed_schema(
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
-            icon=ICON_WAVEFORM
-        ).extend({
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds
-        }),
+            icon=ICON_WAVEFORM,
+        ).extend(
+            {cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds}
+        ),
         CONF_MAX: sensor.sensor_schema(
             SoundLevelMeterSensorMax,
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
-            icon=ICON_WAVEFORM
-        ).extend({
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds,
-            cv.Required(CONF_WINDOW_SIZE): cv.positive_time_period_milliseconds
-        }),
+            icon=ICON_WAVEFORM,
+        ).extend(
+            {
+                cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds,
+                cv.Required(CONF_WINDOW_SIZE): cv.positive_time_period_milliseconds,
+            }
+        ),
         CONF_MIN: sensor.sensor_schema(
             SoundLevelMeterSensorMin,
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
-            icon=ICON_WAVEFORM
-        ).extend({
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds,
-            cv.Required(CONF_WINDOW_SIZE): cv.positive_time_period_milliseconds
-        }),
+            icon=ICON_WAVEFORM,
+        ).extend(
+            {
+                cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds,
+                cv.Required(CONF_WINDOW_SIZE): cv.positive_time_period_milliseconds,
+            }
+        ),
         CONF_PEAK: sensor.sensor_schema(
             SoundLevelMeterSensorPeak,
             unit_of_measurement=UNIT_DECIBEL,
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
-            icon=ICON_WAVEFORM
-        ).extend({
-            cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds
-        })
+            icon=ICON_WAVEFORM,
+        ).extend(
+            {cv.Optional(CONF_UPDATE_INTERVAL): cv.positive_time_period_milliseconds}
+        ),
     }
 )
 
 CONFIG_FILTER_SCHEMA = cv.typed_schema(
     {
-        CONF_SOS: cv.Schema({
-            cv.GenerateID(): cv.declare_id(SOS_Filter),
-            cv.Required(CONF_COEFFS): [[cv.float_]]
-        })
+        CONF_SOS: cv.Schema(
+            {
+                cv.GenerateID(): cv.declare_id(SOS_Filter),
+                cv.Required(CONF_COEFFS): [[cv.float_]],
+            }
+        )
     }
 )
 
@@ -114,39 +129,40 @@ def config_group_schema(value):
     return CONFIG_GROUP_SCHEMA(value)
 
 
-CONFIG_GROUP_SCHEMA = (
-    cv.Schema({
+CONFIG_GROUP_SCHEMA = cv.Schema(
+    {
         cv.GenerateID(): cv.declare_id(SensorGroup),
         cv.Optional(CONF_FILTERS): [CONFIG_FILTER_SCHEMA],
         cv.Optional(CONF_SENSORS): [CONFIG_SENSOR_SCHEMA],
-        cv.Optional(CONF_GROUPS): [config_group_schema]
-    })
+        cv.Optional(CONF_GROUPS): [config_group_schema],
+    }
 )
 
-CONFIG_SCHEMA = (
-    cv.Schema(
-        {
-            cv.GenerateID(): cv.declare_id(SoundLevelMeter),
-            cv.GenerateID(CONF_I2S_ID): cv.use_id(i2s.I2SComponent),
-            cv.Optional(CONF_UPDATE_INTERVAL, default="60s"): cv.positive_time_period_milliseconds,
-            cv.Optional(CONF_IS_ON, default=True): cv.boolean,
-            cv.Optional(CONF_BUFFER_SIZE, default=1024): cv.positive_not_null_int,
-            cv.Optional(CONF_WARMUP_INTERVAL, default="500ms"): cv.positive_time_period_milliseconds,
-            cv.Optional(CONF_TASK_STACK_SIZE, default=4096): cv.positive_not_null_int,
-            cv.Optional(CONF_TASK_PRIORITY, default=2): cv.uint8_t,
-            cv.Optional(CONF_TASK_CORE, default=1): cv.int_range(0, 1),
-            cv.Optional(CONF_MIC_SENSITIVITY): cv.decibel,
-            cv.Optional(CONF_MIC_SENSITIVITY_REF): cv.decibel,
-            cv.Optional(CONF_OFFSET): cv.decibel,
-            cv.Required(CONF_GROUPS): [CONFIG_GROUP_SCHEMA]
-        }
-    )
-    .extend(cv.COMPONENT_SCHEMA)
-)
+CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.declare_id(SoundLevelMeter),
+        cv.GenerateID(CONF_I2S_ID): cv.use_id(i2s.I2SComponent),
+        cv.Optional(
+            CONF_UPDATE_INTERVAL, default="60s"
+        ): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_IS_ON, default=True): cv.boolean,
+        cv.Optional(CONF_BUFFER_SIZE, default=1024): cv.positive_not_null_int,
+        cv.Optional(
+            CONF_WARMUP_INTERVAL, default="500ms"
+        ): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_TASK_STACK_SIZE, default=4096): cv.positive_not_null_int,
+        cv.Optional(CONF_TASK_PRIORITY, default=2): cv.uint8_t,
+        cv.Optional(CONF_TASK_CORE, default=1): cv.int_range(0, 1),
+        cv.Optional(CONF_MIC_SENSITIVITY): cv.decibel,
+        cv.Optional(CONF_MIC_SENSITIVITY_REF): cv.decibel,
+        cv.Optional(CONF_OFFSET): cv.decibel,
+        cv.Required(CONF_GROUPS): [CONFIG_GROUP_SCHEMA],
+    }
+).extend(cv.COMPONENT_SCHEMA)
 
-SOUND_LEVEL_METER_ACTION_SCHEMA = maybe_simple_id({
-    cv.GenerateID(): cv.use_id(SoundLevelMeter)
-})
+SOUND_LEVEL_METER_ACTION_SCHEMA = maybe_simple_id(
+    {cv.GenerateID(): cv.use_id(SoundLevelMeter)}
+)
 
 
 async def groups_to_code(config, component, parent):
@@ -196,9 +212,24 @@ async def to_code(config):
     await groups_to_code(config[CONF_GROUPS], var, var)
 
 
-@automation.register_action("sound_level_meter.toggle", ToggleAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
-@automation.register_action("sound_level_meter.turn_off", TurnOffAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
-@automation.register_action("sound_level_meter.turn_on", TurnOnAction, SOUND_LEVEL_METER_ACTION_SCHEMA)
+@automation.register_action(
+    "sound_level_meter.toggle",
+    ToggleAction,
+    SOUND_LEVEL_METER_ACTION_SCHEMA,
+    synchronous=True,
+)
+@automation.register_action(
+    "sound_level_meter.turn_off",
+    TurnOffAction,
+    SOUND_LEVEL_METER_ACTION_SCHEMA,
+    synchronous=True,
+)
+@automation.register_action(
+    "sound_level_meter.turn_on",
+    TurnOnAction,
+    SOUND_LEVEL_METER_ACTION_SCHEMA,
+    synchronous=True,
+)
 async def switch_toggle_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     return cg.new_Pvariable(action_id, template_arg, paren)

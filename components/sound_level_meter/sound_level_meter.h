@@ -4,6 +4,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <algorithm>
+#include <deque>
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
