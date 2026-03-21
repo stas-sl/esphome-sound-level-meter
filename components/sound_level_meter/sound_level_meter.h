@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <algorithm>
+#include <deque>
 
 #include "esp_timer.h"
 

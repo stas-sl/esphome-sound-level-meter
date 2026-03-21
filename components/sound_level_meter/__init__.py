@@ -251,10 +251,16 @@ async def to_code(config):
 
 
 @automation.register_action(
-    "sound_level_meter.start", StartAction, SOUND_LEVEL_METER_ACTION_SCHEMA
+    "sound_level_meter.start",
+    StartAction,
+    SOUND_LEVEL_METER_ACTION_SCHEMA,
+    synchronous=True,
 )
 @automation.register_action(
-    "sound_level_meter.stop", StopAction, SOUND_LEVEL_METER_ACTION_SCHEMA
+    "sound_level_meter.stop",
+    StopAction,
+    SOUND_LEVEL_METER_ACTION_SCHEMA,
+    synchronous=True,
 )
 async def switch_toggle_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
