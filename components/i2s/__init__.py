@@ -5,6 +5,7 @@ import esphome.config_validation as cv
 from esphome import pins
 from esphome.const import CONF_ID
 from esphome.core import coroutine_with_priority
+from esphome.components.esp32 import include_builtin_idf_component
 
 DEPENDENCIES = ["esp32"]
 CODEOWNERS = ["@stas-sl"]
@@ -69,6 +70,8 @@ CONFIG_SCHEMA = cv.All(
 
 @coroutine_with_priority(1.0)
 async def to_code(config):
+    include_builtin_idf_component("driver")
+
     cg.add_global(i2s_ns.using)
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
