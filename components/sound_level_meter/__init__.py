@@ -20,7 +20,7 @@ from esphome.const import (
 
 CODEOWNERS = ["@stas-sl"]
 DEPENDENCIES = ["esp32", "microphone"]
-AUTO_LOAD = ["sensor", "audio"]
+AUTO_LOAD = ["sensor", "audio", "ring_buffer"]
 MULTI_CONF = True
 
 sound_level_meter_ns = cg.esphome_ns.namespace("sound_level_meter")

@@ -162,7 +162,8 @@ void SoundLevelMeter::task(void *param) {
   SoundLevelMeter *this_ = reinterpret_cast<SoundLevelMeter *>(param);
   this_->is_running_ = true;
   {
-    this_->ring_buffer_ = RingBuffer::create(this_->get_audio_stream_info().ms_to_bytes(this_->ring_buffer_size_ms_));
+    this_->ring_buffer_ = esphome::ring_buffer::RingBuffer::create(
+        this_->get_audio_stream_info().ms_to_bytes(this_->ring_buffer_size_ms_));
     this_->ring_buffer_weak_ = this_->ring_buffer_;
     BufferStack<float> buffers(this_->ms_to_frames(AUDIO_BUFFER_DURATION_MS));
 

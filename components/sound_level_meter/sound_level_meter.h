@@ -9,7 +9,7 @@
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
-#include "esphome/core/ring_buffer.h"
+#include "esphome/components/ring_buffer/ring_buffer.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/microphone/microphone_source.h"
 
@@ -88,8 +88,8 @@ class SoundLevelMeter : public Component
   bool is_high_freq_{false};
   bool is_auto_start_{true};
   HighFrequencyLoopRequester high_freq_;
-  std::shared_ptr<RingBuffer> ring_buffer_;
-  std::weak_ptr<RingBuffer> ring_buffer_weak_;
+  std::shared_ptr<esphome::ring_buffer::RingBuffer> ring_buffer_;
+  std::weak_ptr<esphome::ring_buffer::RingBuffer> ring_buffer_weak_;
   size_t ring_buffer_stats_free_{SIZE_MAX};
   TaskHandle_t task_handle_{nullptr};
 
