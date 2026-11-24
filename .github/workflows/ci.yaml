@@ -11,42 +11,41 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     env:
-      ESPHOME_VERSION: 2026.7.3
-      PLATFORMIO_LIBDEPS_DIR: ~/.platformio/libdeps
+      ESPHOME_VERSION: 2026.11.0
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.15"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
       - id: cache
         name: Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
-            ~/.platformio
-            .venv
+            ~/.cache/esphome
+            ~/.venv
           key: esphome-${{ env.ESPHOME_VERSION }}
 
       - name: Set up virtualenv
         run: |
-          python -m venv .venv
-          source .venv/bin/activate
+          python -m venv ~/.venv
+          source ~/.venv/bin/activate
           pip install --upgrade pip
           pip install esphome==${{ env.ESPHOME_VERSION }} yamllint pylint
         if: steps.cache.outputs.cache-hit != 'true'
 
       - name: Init virtualenv
         run: |
-          source .venv/bin/activate
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
-          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> $GITHUB_ENV
+          source ~/.venv/bin/activate
+          echo "~/.venv/bin" >> $GITHUB_PATH
+          echo "VIRTUAL_ENV=~/.venv" >> $GITHUB_ENV
 
       - name: Run yamllint
         run: |

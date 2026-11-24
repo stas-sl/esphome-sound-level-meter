@@ -298,7 +298,7 @@ I'm not so familiar with assembler and it is hard to understand and maintain, so
 
 ## Supported platforms
 
-Tested with ESPHome version 2026.2.1 (ESP-IDF v5.5.2)
+Tested with ESPHome version 2026.11.0 (ESP-IDF v5.5.6)
 
 ## Troubleshooting
 

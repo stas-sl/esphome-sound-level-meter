@@ -75,18 +75,18 @@ void SoundLevelMeter::dump_config() {
 void SoundLevelMeter::setup() {
   this->sort_sensors();
 
-  this->microphone_source_->add_data_callback([this](const std::vector<uint8_t> &data) {
+  this->microphone_source_->add_data_callback([this](const microphone::AudioCapture &capture) {
     auto ring_buffer = this->ring_buffer_weak_.lock();
     if (ring_buffer) {
       size_t bytes_free = ring_buffer->free();
-      if (bytes_free < data.size()) {
+      if (bytes_free < capture.data.size()) {
         static uint32_t last_log = 0;
         if (millis() - last_log > 1000) {
           this->defer([] { ESP_LOGW(TAG, "Not enough free bytes in ring buffer to store incoming audio data."); });
           last_log = millis();
         }
       }
-      ring_buffer->write((void *) data.data(), data.size());
+      ring_buffer->write((void *) capture.data.data(), capture.data.size());
       this->ring_buffer_stats_free_ = std::min(ring_buffer->free(), this->ring_buffer_stats_free_);
     }
   });
